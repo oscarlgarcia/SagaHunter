@@ -1,0 +1,14 @@
+**/node_modules
+**/.next
+**/locale
+**/\[locale\]
+**/__pycache__
+**/*.pyc
+.env
+.git
+.pytest_cache
+*.egg-info
+dist
+venv
+.venv
+*.log

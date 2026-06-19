@@ -1,0 +1,123 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+model Feed {
+  id              String    @id @default(uuid())
+  name            String
+  url             String    @unique
+  sourceType      String    @map("source_type")
+  language        String    @default("en")
+  enabled         Boolean   @default(true)
+  intervalMinutes Int       @default(360) @map("interval_minutes")
+  lastFetchedAt   DateTime? @map("last_fetched_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@map("feeds")
+}
+
+model Seed {
+  id             String       @id @default(uuid())
+  title          String
+  sourceType     String       @map("source_type")
+  sourceUrl      String?      @unique @map("source_url")
+  sourceName     String?      @map("source_name")
+  rawText        String       @map("raw_text")
+  language       String       @default("en")
+  narrativeScore Int?         @map("narrative_score")
+  status         String       @default("discovered")
+  discoveredAt   DateTime     @default(now()) @map("discovered_at")
+
+  enrichments Enrichment[]
+  story       Story?
+
+  @@index([sourceType])
+  @@index([status])
+  @@index([language])
+  @@index([discoveredAt])
+  @@index([narrativeScore])
+  @@index([sourceUrl])
+  @@map("seeds")
+}
+
+model Enrichment {
+  id             String    @id @default(uuid())
+  seedId         String    @map("seed_id")
+  agentName      String    @map("agent_name")
+  data           Json
+  llmData        Json?     @map("llm_data")
+  llmGeneratedAt DateTime? @map("llm_generated_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  seed Seed @relation(fields: [seedId], references: [id], onDelete: Cascade)
+
+  @@index([seedId])
+  @@index([agentName])
+  @@index([seedId, agentName])
+  @@map("enrichments")
+}
+
+model AgentConfig {
+  id        String   @id @default(uuid())
+  agentName String   @unique @map("agent_name")
+  enabled   Boolean  @default(true)
+  mode      String   @default("auto")
+  schedule  String?
+  languages String[] @default(["en"])
+  params    Json     @default("{}")
+  llmPrompt String?  @map("llm_prompt")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  runLogs AgentRunLog[]
+
+  @@index([enabled])
+  @@map("agent_configs")
+}
+
+model AgentRunLog {
+  id           String   @id @default(uuid())
+  agentName    String   @map("agent_name")
+  status       String   @default("running")
+  seedsCreated Int      @default(0) @map("seeds_created")
+  message      String?
+  startedAt    DateTime @default(now()) @map("started_at")
+  finishedAt   DateTime? @map("finished_at")
+
+  agentConfig AgentConfig @relation(fields: [agentName], references: [agentName])
+
+  @@index([agentName, startedAt])
+  @@index([status])
+  @@map("agent_run_logs")
+}
+
+model AgentConnection {
+  id            String  @id @default(uuid())
+  name          String?
+  triggerAgent  String  @map("trigger_agent")
+  actionAgent   String  @map("action_agent")
+  condition     Json?
+  enabled       Boolean @default(true)
+
+  @@map("agent_connections")
+}
+
+model Story {
+  id          String    @id @default(uuid())
+  seedId      String    @unique @map("seed_id")
+  title       String
+  status      String    @default("outline")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  publishedAt DateTime? @map("published_at")
+
+  seed Seed @relation(fields: [seedId], references: [id])
+
+  @@map("stories")
+}
