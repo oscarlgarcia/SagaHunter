@@ -4,15 +4,15 @@ import { useEffect, useRef, useState } from "react";
 
 export function AnimatedCounter({ value, duration = 800 }: { value: number; duration?: number }) {
   const [display, setDisplay] = useState(0);
-  const prevRef = useRef(value);
+  const prevRef = useRef<number | undefined>(undefined);
   const raf = useRef<number>();
 
   useEffect(() => {
-    const start = prevRef.current;
+    const start = prevRef.current ?? 0;
     const diff = value - start;
+    prevRef.current = value;
     if (diff === 0) return;
     const startTime = performance.now();
-    prevRef.current = value;
 
     const animate = (now: number) => {
       const elapsed = now - startTime;
