@@ -13,8 +13,5 @@ echo "Generating Prisma client..."
 cd /app/web
 npx prisma generate
 
-echo "Pushing schema to database..."
-npx prisma db push
-
 echo "Starting supervisord..."
 exec supervisord -c /app/supervisord.conf
