@@ -1,25 +1,46 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+let statsCache: { data: object | null; expiresAt: number } = { data: null, expiresAt: 0 };
+
+async function safeQuery<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await fn();
+  } catch {
+    return fallback;
+  }
+}
+
 export async function GET() {
+  const now = Date.now();
+  if (statsCache.data && statsCache.expiresAt > now) {
+    return NextResponse.json(statsCache.data);
+  }
+
   const [totalSeeds, totalEnrichments, seedsByStatus, totalFeeds, agentRunCount] = await Promise.all([
-    prisma.seed.count(),
-    prisma.enrichment.count(),
-    prisma.seed.groupBy({ by: ["status"], _count: true }),
-    prisma.feed.count({ where: { enabled: true } }),
-    prisma.agentRunLog.count(),
+    safeQuery(() => prisma.seed.count(), 0),
+    safeQuery(() => prisma.enrichment.count(), 0),
+    safeQuery(() => prisma.seed.groupBy({ by: ["status"], _count: true }), []),
+    safeQuery(() => prisma.feed.count({ where: { enabled: true } }), 0),
+    safeQuery(() => prisma.agentRunLog.count(), 0),
   ]);
 
   const statusCounts: Record<string, number> = {};
-  for (const row of seedsByStatus) {
-    statusCounts[row.status] = row._count;
+  if (Array.isArray(seedsByStatus)) {
+    for (const row of seedsByStatus) {
+      statusCounts[row.status] = row._count;
+    }
   }
 
-  return NextResponse.json({
+  const body = {
     totalSeeds,
     totalEnrichments,
     totalFeeds,
     agentRunCount,
     seedsByStatus: statusCounts,
-  });
+  };
+
+  statsCache = { data: body, expiresAt: now + 30_000 };
+
+  return NextResponse.json(body);
 }
