@@ -1,10 +1,11 @@
 "use client";
 
-import { Link, usePathname } from "@/i18n/navigation";
+import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { LayoutDashboard, Columns3, Rss, Bot, GitBranch, Languages } from "lucide-react";
+import { LayoutDashboard, Columns3, Rss, Bot, GitBranch, Languages, Check, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { useTheme } from "./ThemeProvider";
 
 const NAV_ITEMS = [
   { href: "/", icon: LayoutDashboard, key: "dashboard" },
@@ -20,12 +21,14 @@ export function Sidebar() {
   const t = useTranslations();
   const locale = useLocale();
   const pathname = usePathname();
+  const router = useRouter();
   const [langOpen, setLangOpen] = useState(false);
 
   const switchLocale = (newLocale: string) => {
-    document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
-    window.location.reload();
+    router.replace(pathname, { locale: newLocale });
+    setLangOpen(false);
   };
+  const { theme, toggle } = useTheme();
 
   return (
     <aside className="w-64 bg-gray-900 text-white flex flex-col h-screen fixed left-0 top-0">
@@ -56,13 +59,21 @@ export function Sidebar() {
         })}
       </nav>
       <div className="p-4 border-t border-gray-700 space-y-2">
+        <button
+          onClick={toggle}
+          className="flex items-center gap-2 w-full px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+        >
+          {theme === "dark" ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+          <span className="flex-1 text-left">{theme === "dark" ? "Light" : "Dark"} Mode</span>
+        </button>
         <div className="relative">
           <button
             onClick={() => setLangOpen(!langOpen)}
             className="flex items-center gap-2 w-full px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
           >
             <Languages className="w-3.5 h-3.5" />
-            <span>{t(`locale.${locale}`)}</span>
+            <span className="flex-1 text-left">{t(`locale.${locale}`)}</span>
+            <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-gray-700 text-gray-300">{locale}</span>
           </button>
           {langOpen && (
             <div className="absolute bottom-full mb-1 left-0 w-full bg-gray-800 border border-gray-700 rounded-lg shadow-lg overflow-hidden">
@@ -71,13 +82,16 @@ export function Sidebar() {
                   key={l}
                   onClick={() => switchLocale(l)}
                   className={cn(
-                    "block w-full text-left px-3 py-1.5 text-xs transition-colors",
+                    "flex items-center gap-2 w-full text-left px-3 py-1.5 text-xs transition-colors",
                     l === locale
                       ? "text-saga-400 bg-gray-700"
                       : "text-gray-400 hover:text-white hover:bg-gray-700"
                   )}
                 >
-                  {t(`locale.${l}`)}
+                  <span className="w-3.5 flex justify-center">
+                    {l === locale && <Check className="w-3 h-3" />}
+                  </span>
+                  <span>{t(`locale.${l}`)}</span>
                 </button>
               ))}
             </div>

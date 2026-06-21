@@ -207,6 +207,42 @@ PROMPTS: dict[str, str] = {
         "Language of text: {language}\n\n"
         "Text: {text}"
     ),
+    "story_critique": (
+        "Respond with ONLY valid JSON (no markdown, no code fences, no explanation). "
+        "```json is NOT valid JSON — respond with raw JSON only. "
+        "You are a story critique analyst. Analyze the narrative coherence, pacing, emotional arc, and completeness of the following story text.\n"
+        "Schema:\n"
+        '{{\n'
+        '  "coherence_score": 0-100,\n'
+        '  "pacing_score": 0-100,\n'
+        '  "emotional_arc_score": 0-100,\n'
+        '  "completeness_score": 0-100,\n'
+        '  "overall_grade": "A"/"B"/"C"/"D"/"F",\n'
+        '  "strengths": ["strength1", "strength2"],\n'
+        '  "weaknesses": ["weakness1", "weakness2"],\n'
+        '  "recommendations": ["recommendation1", "recommendation2"],\n'
+        '  "themes": ["theme1", "theme2"],\n'
+        '  "target_audience": "description of ideal reader"\n'
+        "}}\n\n"
+        "Provide 2-4 items each for strengths, weaknesses, recommendations, and themes.\n\n"
+        "Language of text: {language}\n\n"
+        "Text: {text}"
+    ),
+    "auto_summary": (
+        "Respond with ONLY valid JSON (no markdown, no code fences, no explanation). "
+        "```json is NOT valid JSON — respond with raw JSON only. "
+        "You are a story summarizer. Write a concise 3-5 sentence summary of the following narrative text, capturing the key plot, characters, themes, and narrative significance.\n"
+        "Schema:\n"
+        '{{\n'
+        '  "summary": "3-5 sentence summary",\n'
+        '  "logline": "One-sentence hook",\n'
+        '  "key_themes": ["theme1", "theme2"],\n'
+        '  "narrative_significance": "Why this story matters or its unique angle",\n'
+        '  "comparable_titles": ["Comparable Title 1", "Comparable Title 2"]\n'
+        "}}\n\n"
+        "Language of text: {language}\n\n"
+        "Text: {text}"
+    ),
 }
 
 

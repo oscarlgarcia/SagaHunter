@@ -28,7 +28,9 @@
   "seed": {
     "title": "Détail de la Graine",
     "export": "Exporter",
+    "export_tooltip": "Exporter cette graine en JSON",
     "raw": "Contenu Original",
+    "raw_tab": "Texte Original",
     "analysis": "Analyse",
     "creative": "Créatif",
     "publishing": "Publication",
@@ -37,7 +39,97 @@
     "status": "Statut",
     "language": "Langue",
     "story": "Histoire",
-    "no_analysis": "Pas d'analyse. Configurez des agents pour traiter cette graine."
+    "story_status": "Statut de l'histoire :",
+    "story_created": "Créée",
+    "source_link": "Lien Source",
+    "not_found": "Graine non trouvée",
+    "delete_modal_title": "Supprimer la Graine",
+    "delete_confirm": "Êtes-vous sûr de vouloir supprimer cette graine et tous ses enrichissements ?",
+    "delete_warning": "Cette action est irréversible.",
+    "deleting": "Suppression...",
+    "delete_error": "Échec de la suppression de la graine",
+    "delete_tooltip": "Supprimer cette graine",
+    "no_analysis": "Pas d'analyse. Configurez des agents pour traiter cette graine.",
+    "heuristic": "Heuristique",
+    "ai": "IA",
+    "generating_progress": "Génération {current}/{total}...",
+    "generate_all": "Tout Générer ({count})",
+    "regenerate_with_ai": "Régénérer avec l'IA",
+    "generating_with_time": "Génération... ({elapsed}s)",
+    "generate_with_ai": "Générer avec l'IA",
+    "llm_error": "L'enrichissement LLM a échoué. Ollama est-il en cours d'exécution ?",
+    "bulk_generation_result": "Généré {success}/{total}. Erreurs : {errors}",
+    "bulk_generation_done": "Les {total} enrichissements ont été générés",
+    "agents": {
+      "character_harvester": "Moissonneur de Personnages",
+      "world_builder": "Constructeur de Mondes",
+      "voice_tuner": "Ajusteur de Voix",
+      "what_if_generator": "Générateur de Et Si",
+      "what_if": "Et Si",
+      "angle_finder": "Chercheur d'Angle",
+      "story_structurer": "Structurateur d'Histoire",
+      "genre_classifier": "Classifieur de Genre",
+      "find_the_angle": "Trouver l'Angle",
+      "story_structure": "Structure d'Histoire",
+      "kindle_pre_check": "Pré-Vérification Kindle",
+      "blurb_generator": "Générateur de Résumé",
+      "series_connector": "Connecteur de Séries",
+      "plot_hole_detector": "Détecteur d'Incohérences"
+    },
+    "enrichment": {
+      "plot_hole_detector": {
+        "grade": "Note",
+        "consistency": "Cohérence",
+        "issues": "Problèmes",
+        "critical": "critique",
+        "major": "majeur",
+        "minor": "mineur",
+        "no_issues": "Aucun problème détecté",
+        "consistent": "Votre récit semble cohérent dans tous les enrichissements.",
+        "based_on": "Basé sur {count} enrichissements"
+      },
+      "series_connector": {
+        "connects_to": "Cette graine se connecte à {count} autres graines.",
+        "no_connections": "Aucune connexion trouvée."
+      },
+      "blurb_generator": {
+        "genre": "Genre :",
+        "best_for": "Idéal pour :",
+        "words": "{count} mots"
+      },
+      "voice_tuner": {
+        "pov": "PDV",
+        "tense": "Temps",
+        "register": "Registre",
+        "pacing": "Rythme",
+        "mood": "Ambiance",
+        "readability": "Lisibilité",
+        "style_exploration": "Exploration de Style",
+        "original": "Original",
+        "try": "Essayer"
+      },
+      "character_harvester": {
+        "no_characters": "Aucun personnage détecté dans cette graine.",
+        "main": "Principal",
+        "motivations": "Motivations :",
+        "potential_arcs": "Arcs potentiels :"
+      },
+      "world_builder": {
+        "setting": "Cadre",
+        "tech_level": "Niveau technologique",
+        "geography": "Géographie",
+        "atmosphere": "Atmosphère",
+        "magic": "Magie",
+        "no_magic": "Pas de Magie",
+        "factions": "Factions",
+        "world_rules": "Règles du Monde"
+      },
+      "what_if_generator": {
+        "original": "Original",
+        "protagonist": "Protagoniste",
+        "impact": "impact {level}"
+      }
+    }
   },
   "agents": {
     "title": "Agents",

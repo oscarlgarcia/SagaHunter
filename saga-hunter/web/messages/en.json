@@ -28,7 +28,9 @@
   "seed": {
     "title": "Seed Detail",
     "export": "Export",
+    "export_tooltip": "Export this seed as JSON",
     "raw": "Original Content",
+    "raw_tab": "Raw Text",
     "analysis": "Analysis",
     "creative": "Creative",
     "publishing": "Publishing",
@@ -37,7 +39,97 @@
     "status": "Status",
     "language": "Language",
     "story": "Story",
-    "no_analysis": "No analysis yet. Configure agents to process this seed."
+    "story_status": "Story status:",
+    "story_created": "Created",
+    "source_link": "Source Link",
+    "not_found": "Seed not found",
+    "delete_modal_title": "Delete Seed",
+    "delete_confirm": "Are you sure you want to delete this seed and all its enrichments?",
+    "delete_warning": "This action cannot be undone.",
+    "deleting": "Deleting...",
+    "delete_error": "Failed to delete seed",
+    "delete_tooltip": "Delete this seed",
+    "no_analysis": "No analysis yet. Configure agents to process this seed.",
+    "heuristic": "Heuristic",
+    "ai": "AI",
+    "generating_progress": "Generating {current}/{total}...",
+    "generate_all": "Generate All ({count})",
+    "regenerate_with_ai": "Regenerate with AI",
+    "generating_with_time": "Generating... ({elapsed}s)",
+    "generate_with_ai": "Generate with AI",
+    "llm_error": "LLM enrichment failed. Is Ollama running?",
+    "bulk_generation_result": "Generated {success}/{total}. Errors: {errors}",
+    "bulk_generation_done": "All {total} enrichments generated",
+    "agents": {
+      "character_harvester": "Character Harvester",
+      "world_builder": "World Builder",
+      "voice_tuner": "Voice Tuner",
+      "what_if_generator": "What If Generator",
+      "what_if": "What If",
+      "angle_finder": "Angle Finder",
+      "story_structurer": "Story Structurer",
+      "genre_classifier": "Genre Classifier",
+      "find_the_angle": "Find the Angle",
+      "story_structure": "Story Structure",
+      "kindle_pre_check": "Kindle Pre-Check",
+      "blurb_generator": "Blurb Generator",
+      "series_connector": "Series Connector",
+      "plot_hole_detector": "Plot Hole Detector"
+    },
+    "enrichment": {
+      "plot_hole_detector": {
+        "grade": "Grade",
+        "consistency": "Consistency",
+        "issues": "Issues",
+        "critical": "critical",
+        "major": "major",
+        "minor": "minor",
+        "no_issues": "No issues detected",
+        "consistent": "Your narrative appears consistent across all enrichments.",
+        "based_on": "Based on {count} enrichments"
+      },
+      "series_connector": {
+        "connects_to": "This seed connects to {count} other seeds.",
+        "no_connections": "No connections found."
+      },
+      "blurb_generator": {
+        "genre": "Genre:",
+        "best_for": "Best for:",
+        "words": "{count} words"
+      },
+      "voice_tuner": {
+        "pov": "POV",
+        "tense": "Tense",
+        "register": "Register",
+        "pacing": "Pacing",
+        "mood": "Mood",
+        "readability": "Readability",
+        "style_exploration": "Style Exploration",
+        "original": "Original",
+        "try": "Try"
+      },
+      "character_harvester": {
+        "no_characters": "No characters detected in this seed.",
+        "main": "Main",
+        "motivations": "Motivations:",
+        "potential_arcs": "Potential arcs:"
+      },
+      "world_builder": {
+        "setting": "Setting",
+        "tech_level": "Tech level",
+        "geography": "Geography",
+        "atmosphere": "Atmosphere",
+        "magic": "Magic",
+        "no_magic": "No Magic",
+        "factions": "Factions",
+        "world_rules": "World Rules"
+      },
+      "what_if_generator": {
+        "original": "Original",
+        "protagonist": "Protagonist",
+        "impact": "{level} impact"
+      }
+    }
   },
   "agents": {
     "title": "Agents",

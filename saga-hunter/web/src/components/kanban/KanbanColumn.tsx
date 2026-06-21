@@ -7,6 +7,7 @@ interface Seed {
   id: string;
   title: string;
   sourceType: string;
+  sourceUrl: string | null;
   narrativeScore: number | null;
   status: string;
 }

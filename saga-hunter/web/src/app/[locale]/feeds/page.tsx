@@ -15,6 +15,8 @@ interface Feed {
   language: string;
   enabled: boolean;
   intervalMinutes: number;
+  maxPages: number | null;
+  maxEntries: number | null;
   lastFetchedAt: string | null;
 }
 
@@ -24,6 +26,8 @@ interface FeedFormData {
   sourceType: "news" | "curiosity" | "trend";
   language: string;
   intervalMinutes: number;
+  maxPages: number | null;
+  maxEntries: number | null;
 }
 
 export default function FeedsPage() {
@@ -146,6 +150,8 @@ export default function FeedsPage() {
                 <th className="text-center px-5 py-3 font-medium text-gray-500">{t("type")}</th>
                 <th className="text-center px-5 py-3 font-medium text-gray-500">{t("lang")}</th>
                 <th className="text-center px-5 py-3 font-medium text-gray-500">{t("interval")}</th>
+                <th className="text-center px-5 py-3 font-medium text-gray-500">Pages</th>
+                <th className="text-center px-5 py-3 font-medium text-gray-500">Entries</th>
                 <th className="text-center px-5 py-3 font-medium text-gray-500">{t("status")}</th>
                 <th className="text-right px-5 py-3 font-medium text-gray-500">{t("actions")}</th>
               </tr>
@@ -160,6 +166,8 @@ export default function FeedsPage() {
                   </td>
                   <td className="px-5 py-4 text-center text-gray-600 uppercase">{feed.language}</td>
                   <td className="px-5 py-4 text-center text-gray-600">{feed.intervalMinutes}m</td>
+                  <td className="px-5 py-4 text-center text-gray-600">{feed.maxPages ?? "∞"}</td>
+                  <td className="px-5 py-4 text-center text-gray-600">{feed.maxEntries ?? "∞"}</td>
                   <td className="px-5 py-4 text-center">
                     <button
                       onClick={() => handleToggle(feed)}
@@ -200,6 +208,8 @@ export default function FeedsPage() {
             sourceType: editingFeed.sourceType as any,
             language: editingFeed.language,
             intervalMinutes: editingFeed.intervalMinutes,
+            maxPages: editingFeed.maxPages,
+            maxEntries: editingFeed.maxEntries,
           } : undefined}
           onSubmit={editingFeed ? handleUpdate : handleCreate}
           onCancel={() => setModalOpen(false)}

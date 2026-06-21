@@ -284,7 +284,7 @@ class BlurbGenerator(BaseAgent):
 
     def execute(self) -> AgentResult:
         seeds = execute(
-            "SELECT id, raw_text, title, language FROM seeds ORDER BY discovered_at ASC LIMIT 10",
+            f"SELECT s.id, s.raw_text, s.title, s.language FROM seeds s LEFT JOIN enrichments e ON e.seed_id = s.id AND e.agent_name = '{self.name}' WHERE e.id IS NULL ORDER BY s.discovered_at DESC",
             fetch=True,
         )
         enriched = 0

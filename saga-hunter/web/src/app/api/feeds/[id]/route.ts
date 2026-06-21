@@ -8,6 +8,8 @@ const FeedUpdate = z.object({
   sourceType: z.enum(["news", "curiosity", "trend"]).optional(),
   language: z.string().length(2).optional(),
   intervalMinutes: z.number().int().positive().optional(),
+  maxPages: z.number().int().positive().optional().nullable(),
+  maxEntries: z.number().int().positive().optional().nullable(),
   enabled: z.boolean().optional(),
 });
 

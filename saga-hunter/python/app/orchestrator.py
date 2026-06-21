@@ -92,6 +92,17 @@ def _has_any_connections() -> bool:
     return len(rows) > 0
 
 
+def _get_agent_params(agent_name: str) -> dict:
+    rows = execute(
+        "SELECT params FROM agent_configs WHERE agent_name = %s",
+        (agent_name,),
+        fetch=True,
+    )
+    if rows and rows[0][0] and isinstance(rows[0][0], dict):
+        return rows[0][0]
+    return {}
+
+
 def _run_single_agent(agent) -> bool:
     try:
         result = agent.execute()
@@ -160,11 +171,11 @@ class Orchestrator:
 
     def _schedule_agents(self):
         configs = execute(
-            "SELECT agent_name, enabled, mode, schedule FROM agent_configs",
+            "SELECT agent_name, enabled, mode, schedule, params FROM agent_configs",
             fetch=True,
         )
         for row in configs:
-            agent_name, enabled, mode, schedule = row
+            agent_name, enabled, mode, schedule, params = row
             if not enabled or mode != "auto":
                 continue
             agent_class = AGENT_REGISTRY.get(agent_name)
@@ -172,8 +183,12 @@ class Orchestrator:
                 logger.warning("Unknown agent: %s", agent_name)
                 continue
 
+            params_dict = params if isinstance(params, dict) else {}
+            interval_min = params_dict.get("interval_minutes", settings.AGENT_SCHEDULE_INTERVAL_MINUTES)
+            timeout_sec = params_dict.get("timeout_seconds", 300)
+
             agent = agent_class()
-            interval_min = settings.AGENT_SCHEDULE_INTERVAL_MINUTES
+            agent.timeout = timeout_sec
             self.scheduler.add_job(
                 self._run_agent,
                 IntervalTrigger(minutes=interval_min),
@@ -182,7 +197,7 @@ class Orchestrator:
                 name=agent_name,
                 replace_existing=True,
             )
-            logger.info("Scheduled agent '%s' every %d min", agent_name, interval_min)
+            logger.info("Scheduled agent '%s' every %d min (timeout %ds)", agent_name, interval_min, timeout_sec)
 
     def _run_agent(self, agent):
         logger.info("Running agent: %s", agent.name)
@@ -209,6 +224,8 @@ def run_agent_once(agent_name: str):
         logger.error("Unknown agent: %s", agent_name)
         return
     agent = agent_class()
+    params = _get_agent_params(agent_name)
+    agent.timeout = params.get("timeout_seconds", 300)
     success = _run_single_agent(agent)
     if success and agent.name in MINING_AGENTS:
         downstream = _get_downstream_agents(agent.name)
@@ -232,6 +249,8 @@ def run_pipeline(trigger_agent_name: str):
         logger.error("Unknown agent: %s", trigger_agent_name)
         return
     agent = agent_class()
+    params = _get_agent_params(trigger_agent_name)
+    agent.timeout = params.get("timeout_seconds", 300)
     logger.info("Running pipeline triggered by: %s", trigger_agent_name)
     success = _run_single_agent(agent)
     if success and agent.name in MINING_AGENTS:

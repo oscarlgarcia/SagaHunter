@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { KanbanColumn } from "@/components/kanban/KanbanColumn";
 
@@ -8,6 +8,7 @@ interface Seed {
   id: string;
   title: string;
   sourceType: string;
+  sourceUrl: string | null;
   narrativeScore: number | null;
   status: string;
   _count?: { enrichments: number };
@@ -15,6 +16,7 @@ interface Seed {
 
 export default function BoardPage() {
   const t = useTranslations("board");
+  const tc = useTranslations("common");
   const COLUMNS = [
     { key: "discovered", label: t("discovered"), color: "border-blue-400" },
     { key: "analyzed", label: t("analyzed"), color: "border-purple-400" },
@@ -25,10 +27,14 @@ export default function BoardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const searchTimer = useRef<ReturnType<typeof setTimeout>>();
 
-  const fetchSeeds = useCallback(async () => {
+  const fetchSeeds = useCallback(async (searchTerm = "") => {
     try {
-      const r = await fetch("/api/seeds");
+      const params = new URLSearchParams();
+      if (searchTerm) params.set("search", searchTerm);
+      const r = await fetch(`/api/seeds?${params}`);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const data = await r.json();
       setSeeds(data.seeds);
@@ -40,6 +46,12 @@ export default function BoardPage() {
       setLoading(false);
     }
   }, []);
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => fetchSeeds(value), 300);
+  };
 
   useEffect(() => { fetchSeeds(); }, [fetchSeeds]);
 
@@ -85,7 +97,7 @@ export default function BoardPage() {
         <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
           <p className="text-red-600 font-medium">{t("load_error")}</p>
           <p className="text-red-400 text-sm mt-1">{error}</p>
-          <button onClick={fetchSeeds} className="mt-3 text-sm text-red-600 underline">{t("retry")}</button>
+           <button onClick={() => fetchSeeds()} className="mt-3 text-sm text-red-600 underline">{t("retry")}</button>
         </div>
       </div>
     );
@@ -94,7 +106,15 @@ export default function BoardPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">{t("title")}</h1>
-      <div className="flex gap-4 h-[calc(100vh-8rem)] overflow-x-auto pb-4">
+      <div className="mb-4">
+        <input
+          value={search}
+          onChange={(e) => handleSearchChange(e.target.value)}
+          placeholder={tc("search")}
+          className="w-full px-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-saga-500 focus:border-transparent placeholder:text-gray-400"
+        />
+      </div>
+      <div className="flex gap-4 h-[calc(100vh-12rem)] overflow-x-auto pb-4">
         {COLUMNS.map((col) => (
           <KanbanColumn
             key={col.key}
@@ -103,8 +123,7 @@ export default function BoardPage() {
             seeds={getColumnSeeds(col.key)}
             borderColor={col.color}
             onDrop={handleDrop}
-            draggedId={draggedId}
-            onDragStart={setDraggedId}
+            onDragStart={(id) => setDraggedId(id)}
             onDragEnd={() => setDraggedId(null)}
           />
         ))}

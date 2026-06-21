@@ -28,7 +28,9 @@
   "seed": {
     "title": "Dettaglio Seme",
     "export": "Esporta",
+    "export_tooltip": "Esporta questo seme come JSON",
     "raw": "Contenuto Originale",
+    "raw_tab": "Testo Originale",
     "analysis": "Analisi",
     "creative": "Creativo",
     "publishing": "Pubblicazione",
@@ -37,7 +39,97 @@
     "status": "Stato",
     "language": "Lingua",
     "story": "Storia",
-    "no_analysis": "Nessuna analisi. Configura gli agenti per elaborare questo seme."
+    "story_status": "Stato della storia:",
+    "story_created": "Creata",
+    "source_link": "Link Fonte",
+    "not_found": "Seme non trovato",
+    "delete_modal_title": "Elimina Seme",
+    "delete_confirm": "Sei sicuro di voler eliminare questo seme e tutti i suoi arricchimenti?",
+    "delete_warning": "Questa azione non può essere annullata.",
+    "deleting": "Eliminazione...",
+    "delete_error": "Errore nell'eliminazione del seme",
+    "delete_tooltip": "Elimina questo seme",
+    "no_analysis": "Nessuna analisi. Configura gli agenti per elaborare questo seme.",
+    "heuristic": "Euristica",
+    "ai": "IA",
+    "generating_progress": "Generazione {current}/{total}...",
+    "generate_all": "Genera Tutto ({count})",
+    "regenerate_with_ai": "Rigenera con IA",
+    "generating_with_time": "Generazione... ({elapsed}s)",
+    "generate_with_ai": "Genera con IA",
+    "llm_error": "Arricchimento LLM fallito. Ollama è in esecuzione?",
+    "bulk_generation_result": "Generato {success}/{total}. Errori: {errors}",
+    "bulk_generation_done": "Tutti i {total} arricchimenti generati",
+    "agents": {
+      "character_harvester": "Raccoglitore di Personaggi",
+      "world_builder": "Costruttore di Mondi",
+      "voice_tuner": "Sintonizzatore Vocale",
+      "what_if_generator": "Generatore di Cosa Succederebbe Se",
+      "what_if": "Cosa Succederebbe Se",
+      "angle_finder": "Cercatore di Angolazioni",
+      "story_structurer": "Strutturatore di Storie",
+      "genre_classifier": "Classificatore di Generi",
+      "find_the_angle": "Trova l'Angolazione",
+      "story_structure": "Struttura della Storia",
+      "kindle_pre_check": "Pre-Verifica Kindle",
+      "blurb_generator": "Generatore di Sinossi",
+      "series_connector": "Connettore di Serie",
+      "plot_hole_detector": "Rilevatore di Buchi nella Trama"
+    },
+    "enrichment": {
+      "plot_hole_detector": {
+        "grade": "Voto",
+        "consistency": "Coerenza",
+        "issues": "Problemi",
+        "critical": "critico",
+        "major": "maggiore",
+        "minor": "minore",
+        "no_issues": "Nessun problema rilevato",
+        "consistent": "La tua narrazione appare coerente in tutti gli arricchimenti.",
+        "based_on": "Basato su {count} arricchimenti"
+      },
+      "series_connector": {
+        "connects_to": "Questo seme si collega ad altri {count} semi.",
+        "no_connections": "Nessuna connessione trovata."
+      },
+      "blurb_generator": {
+        "genre": "Genere:",
+        "best_for": "Ideale per:",
+        "words": "{count} parole"
+      },
+      "voice_tuner": {
+        "pov": "POV",
+        "tense": "Tempo",
+        "register": "Registro",
+        "pacing": "Ritmo",
+        "mood": "Atmosfera",
+        "readability": "Leggibilità",
+        "style_exploration": "Esplorazione dello Stile",
+        "original": "Originale",
+        "try": "Prova"
+      },
+      "character_harvester": {
+        "no_characters": "Nessun personaggio rilevato in questo seme.",
+        "main": "Principale",
+        "motivations": "Motivazioni:",
+        "potential_arcs": "Archi potenziali:"
+      },
+      "world_builder": {
+        "setting": "Ambientazione",
+        "tech_level": "Livello tecnologico",
+        "geography": "Geografia",
+        "atmosphere": "Atmosfera",
+        "magic": "Magia",
+        "no_magic": "Nessuna Magia",
+        "factions": "Fazioni",
+        "world_rules": "Regole del Mondo"
+      },
+      "what_if_generator": {
+        "original": "Originale",
+        "protagonist": "Protagonista",
+        "impact": "impatto {level}"
+      }
+    }
   },
   "agents": {
     "title": "Agenti",

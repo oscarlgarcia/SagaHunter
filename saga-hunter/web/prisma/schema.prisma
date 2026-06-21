@@ -17,6 +17,8 @@ model Feed {
   language        String    @default("en")
   enabled         Boolean   @default(true)
   intervalMinutes Int       @default(360) @map("interval_minutes")
+  maxPages        Int?      @map("max_pages")
+  maxEntries      Int?      @map("max_entries")
   lastFetchedAt   DateTime? @map("last_fetched_at")
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")

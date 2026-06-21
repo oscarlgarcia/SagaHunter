@@ -1,16 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import {
-  GitBranch, Plus, Play, Trash2, ChevronRight,
-  Newspaper, BookOpen, Flame, Search, Layout, Tag,
-  Shuffle, Globe, Users, PenTool, BookText, Bug,
-  Radio, Sparkles, Send
+  GitBranch, Plus, Play, ChevronRight,
+  Radio, Search, Sparkles, Send
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { PipelineDAG } from "@/components/pipelines/PipelineDAG";
 
 interface AgentConfig {
   agentName: string;
@@ -54,6 +53,8 @@ const STAGES = [
   { key: "publishing", icon: <Send className="w-5 h-5" />, agents: ["blurb_generator", "series_connector", "plot_hole_detector"], color: { border: "border-l-emerald-400", bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-400", line: "stroke-emerald-400" } },
 ];
 
+const LANGUAGES = ["en", "es", "fr", "it"];
+
 export default function PipelinesPage() {
   const t = useTranslations();
   const [connections, setConnections] = useState<PipelineConnection[]>([]);
@@ -65,6 +66,12 @@ export default function PipelinesPage() {
   const [newTrigger, setNewTrigger] = useState("news_aggregator");
   const [newAction, setNewAction] = useState("angle_finder");
   const [showAddForm, setShowAddForm] = useState(false);
+  const [connectMode, setConnectMode] = useState(false);
+  const [editingAgent, setEditingAgent] = useState<AgentConfig | null>(null);
+  const [editForm, setEditForm] = useState({ enabled: true, mode: "auto", languages: ["en"] as string[], intervalMinutes: 15, timeoutSeconds: 300, prompt: "", defaultPrompt: "", isCustom: false });
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editToast, setEditToast] = useState<string | null>(null);
+  const [agentLogs, setAgentLogs] = useState<Record<string, AgentRunLog[]>>({});
 
   const fetchData = async () => {
     const [connRes, agentRes, logsRes] = await Promise.all([
@@ -78,25 +85,58 @@ export default function PipelinesPage() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchData(); }, []);
+  const fetchAgentLogs = useCallback(async (agentName: string) => {
+    try {
+      const r = await fetch(`/api/agents/logs?name=${agentName}&limit=5`);
+      if (r.ok) {
+        const data = await r.json();
+        setAgentLogs((prev) => ({ ...prev, [agentName]: data }));
+      }
+    } catch {}
+  }, []);
+
+  const fetchAllAgentLogs = useCallback(async () => {
+    const results = await Promise.all(
+      ALL_AGENTS.map(async (name) => {
+        try {
+          const r = await fetch(`/api/agents/logs?name=${name}&limit=5`);
+          if (r.ok) return { name, logs: await r.json() };
+        } catch {}
+        return { name, logs: [] };
+      })
+    );
+    const map: Record<string, AgentRunLog[]> = {};
+    results.forEach(({ name, logs }) => { map[name] = logs; });
+    setAgentLogs(map);
+  }, []);
+
+  useEffect(() => { fetchData(); fetchAllAgentLogs(); }, []);
+
+  useEffect(() => {
+    if (!editToast) return;
+    const t = setTimeout(() => setEditToast(null), 4000);
+    return () => clearTimeout(t);
+  }, [editToast]);
 
   const agentMap = new Map(agents.map((a) => [a.agentName, a]));
 
-  const addConnection = async () => {
+  const addConnection = async (trigger?: string, action?: string) => {
     await fetch("/api/pipelines", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ triggerAgent: newTrigger, actionAgent: newAction, enabled: true }),
+      body: JSON.stringify({ triggerAgent: trigger || newTrigger, actionAgent: action || newAction, enabled: true }),
     });
     setShowAddForm(false);
     fetchData();
   };
 
-  const toggleConnection = async (conn: PipelineConnection) => {
-    await fetch(`/api/pipelines/${conn.id}`, {
+  const toggleConnection = async (connOrId: any, enabled?: boolean) => {
+    const id = typeof connOrId === "string" ? connOrId : connOrId.id;
+    const newEnabled = enabled !== undefined ? enabled : !connOrId.enabled;
+    await fetch(`/api/pipelines/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ enabled: !conn.enabled }),
+      body: JSON.stringify({ enabled: newEnabled }),
     });
     fetchData();
   };
@@ -119,8 +159,84 @@ export default function PipelinesPage() {
     fetchData();
   };
 
-  const connectionsByTrigger = (trigger: string) =>
-    connections.filter((c) => c.triggerAgent === trigger);
+  const runNow = async (agentName: string) => {
+    await fetch(`/api/agents/run?name=${agentName}`, { method: "POST" });
+    setTimeout(() => fetchAgentLogs(agentName), 1000);
+  };
+
+  const toggleAgent = async (agentName: string, enabled: boolean) => {
+    await fetch("/api/agents", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ agentName, enabled }),
+    });
+    fetchData();
+  };
+
+  const editAgent = async (agentName: string) => {
+    const agent = agentMap.get(agentName);
+    if (!agent) return;
+    setEditingAgent(agent);
+    setEditForm({
+      enabled: agent.enabled,
+      mode: agent.mode,
+      languages: agent.languages,
+      intervalMinutes: agent.params?.interval_minutes || 15,
+      timeoutSeconds: agent.params?.timeout_seconds || 300,
+      prompt: "",
+      defaultPrompt: "",
+      isCustom: false,
+    });
+    try {
+      const r = await fetch(`/api/agents/${agentName}/prompt`);
+      if (r.ok) {
+        const data = await r.json();
+        setEditForm((prev) => ({ ...prev, prompt: data.prompt || "", defaultPrompt: data.defaultPrompt || "", isCustom: data.isCustom }));
+      }
+    } catch {}
+  };
+
+  const saveEdit = async () => {
+    if (!editingAgent) return;
+    setSavingEdit(true);
+    try {
+      await fetch("/api/agents", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agentName: editingAgent.agentName,
+          enabled: editForm.enabled,
+          mode: editForm.mode,
+          languages: editForm.languages,
+          intervalMinutes: editForm.intervalMinutes,
+          timeoutSeconds: editForm.timeoutSeconds,
+        }),
+      });
+      if (editForm.isCustom || editForm.prompt) {
+        await fetch(`/api/agents/${editingAgent.agentName}/prompt`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: editForm.prompt }),
+        });
+      }
+      setEditToast("Agent saved");
+      setEditingAgent(null);
+      fetchData();
+    } catch {
+      setEditToast("Failed to save agent");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const toggleLang = (lang: string) => {
+    setEditForm((prev) => ({
+      ...prev,
+      languages: prev.languages.includes(lang)
+        ? prev.languages.filter((l) => l !== lang)
+        : [...prev.languages, lang],
+    }));
+  };
 
   const stageAgents = (names: string[]) =>
     names.map((name) => agentMap.get(name) || { agentName: name, enabled: false, mode: "manual", languages: [], schedule: null, params: {} });
@@ -230,52 +346,26 @@ export default function PipelinesPage() {
                 ))}
               </select>
             </div>
-            <Button size="sm" onClick={addConnection}>{t("common.save")}</Button>
+            <Button size="sm" onClick={() => addConnection()}>{t("common.save")}</Button>
             <Button size="sm" variant="ghost" onClick={() => setShowAddForm(false)}>{t("common.cancel")}</Button>
           </div>
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-gray-200 mb-6">
-        <div className="px-5 py-4 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-900">{t("pipelines.connections")} ({connections.length})</h2>
-        </div>
-        {connections.length === 0 ? (
-          <div className="p-8 text-center text-sm text-gray-400">{t("pipelines.no_connections")}</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100 text-left text-xs text-gray-500 uppercase">
-                  <th className="px-5 py-3 font-medium">{t("pipelines.trigger_agent")}</th>
-                  <th className="px-5 py-3 font-medium">{t("pipelines.action_agent")}</th>
-                  <th className="px-5 py-3 font-medium">{t("pipelines.status")}</th>
-                  <th className="px-5 py-3 font-medium text-right">{t("pipelines.actions")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {connections.map((conn) => (
-                  <tr key={conn.id} className="border-b border-gray-50 hover:bg-gray-50">
-                    <td className="px-5 py-3 capitalize text-gray-700">{conn.triggerAgent.replace(/_/g, " ")}</td>
-                    <td className="px-5 py-3 capitalize text-gray-700">{conn.actionAgent.replace(/_/g, " ")}</td>
-                    <td className="px-5 py-3">
-                      <button onClick={() => toggleConnection(conn)}>
-                        <Badge className={conn.enabled ? "bg-green-100 text-green-700 cursor-pointer" : "bg-gray-100 text-gray-400 cursor-pointer"}>
-                          {conn.enabled ? t("agents.enabled") : t("agents.disabled")}
-                        </Badge>
-                      </button>
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      <Button size="sm" variant="ghost" onClick={() => deleteConnection(conn.id)}>
-                        <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-500" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+      <div className="mb-6">
+        <PipelineDAG
+          agents={agents}
+          connections={connections}
+          onAddConnection={addConnection}
+          onToggleConnection={toggleConnection}
+          onDeleteConnection={deleteConnection}
+          onRunAgent={runNow}
+          onToggleAgent={toggleAgent}
+          onEditAgent={editAgent}
+          agentLogs={agentLogs}
+          connectMode={connectMode}
+          onConnectModeChange={setConnectMode}
+        />
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200">
@@ -320,6 +410,126 @@ export default function PipelinesPage() {
           </div>
         )}
       </div>
+
+      {editingAgent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => !savingEdit && setEditingAgent(null)}>
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 capitalize">{editingAgent.agentName.replace(/_/g, " ")}</h3>
+              <button onClick={() => setEditingAgent(null)} className="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={editForm.enabled}
+                    onChange={(e) => setEditForm({ ...editForm, enabled: e.target.checked })}
+                    className="rounded border-gray-300"
+                  />
+                  Enabled
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={editForm.mode === "auto"}
+                    onChange={(e) => setEditForm({ ...editForm, mode: e.target.checked ? "auto" : "manual" })}
+                    className="rounded border-gray-300"
+                  />
+                  Auto mode
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Languages</label>
+                <div className="flex gap-2">
+                  {LANGUAGES.map((lang) => (
+                    <button
+                      key={lang}
+                      onClick={() => toggleLang(lang)}
+                      className={cn(
+                        "text-xs font-medium px-3 py-1.5 rounded-full transition-colors",
+                        editForm.languages.includes(lang)
+                          ? "bg-saga-100 text-saga-700 ring-1 ring-saga-300"
+                          : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                      )}
+                    >
+                      {lang.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Interval (min)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={1440}
+                    value={editForm.intervalMinutes}
+                    onChange={(e) => setEditForm({ ...editForm, intervalMinutes: parseInt(e.target.value) || 15 })}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Timeout (sec)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={3600}
+                    value={editForm.timeoutSeconds}
+                    onChange={(e) => setEditForm({ ...editForm, timeoutSeconds: parseInt(e.target.value) || 300 })}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">LLM Prompt</label>
+                <textarea
+                  value={editForm.prompt}
+                  onChange={(e) => setEditForm({ ...editForm, prompt: e.target.value, isCustom: true })}
+                  className="w-full h-32 p-3 text-sm font-mono text-gray-700 bg-gray-50 border border-gray-200 rounded-lg resize-y focus:outline-none focus:ring-2 focus:ring-saga-500"
+                  placeholder={editForm.defaultPrompt || "No default prompt available"}
+                />
+                <button
+                  onClick={() => setEditForm({ ...editForm, prompt: editForm.defaultPrompt, isCustom: false })}
+                  className="text-xs text-gray-500 hover:text-gray-700 underline mt-1"
+                >
+                  Reset to default
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 mt-6">
+              <button
+                onClick={() => setEditingAgent(null)}
+                disabled={savingEdit}
+                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveEdit}
+                disabled={savingEdit}
+                className="px-4 py-2 text-sm font-medium text-white bg-saga-600 hover:bg-saga-700 rounded-lg disabled:opacity-50"
+              >
+                {savingEdit ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editToast && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium bg-green-600 text-white">
+          <span>✓</span>
+          <span>{editToast}</span>
+          <button onClick={() => setEditToast(null)} className="ml-2 opacity-70 hover:opacity-100">✕</button>
+        </div>
+      )}
     </div>
   );
 }

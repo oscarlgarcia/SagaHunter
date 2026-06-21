@@ -13,7 +13,7 @@ const DEFAULT_FEEDS = [
 const MINING = ["news_aggregator", "curiosity_engine", "trend_hunter"];
 const ANALYSIS = ["angle_finder", "story_structurer", "genre_classifier"];
 const CREATIVE = ["what_if_generator", "world_builder", "character_harvester", "voice_tuner"];
-const PUBLISHING = ["blurb_generator", "series_connector", "plot_hole_detector"];
+const PUBLISHING = ["blurb_generator", "series_connector", "plot_hole_detector", "story_critique", "auto_summary"];
 
 const DEFAULT_CONNECTIONS = [
   ...MINING.flatMap((t) => ANALYSIS.map((a) => ({ triggerAgent: t, actionAgent: a, enabled: true }))),
@@ -35,6 +35,8 @@ const AGENT_CONFIGS = [
   { agentName: "blurb_generator", enabled: true, mode: "auto", schedule: "*/30 * * * *", languages: ["en", "es", "fr", "it"] },
   { agentName: "series_connector", enabled: true, mode: "auto", schedule: "*/60 * * * *", languages: ["en"] },
   { agentName: "plot_hole_detector", enabled: true, mode: "auto", schedule: "*/30 * * * *", languages: ["en", "es", "fr", "it"] },
+  { agentName: "story_critique", enabled: true, mode: "auto", schedule: "*/30 * * * *", languages: ["en", "es", "fr", "it"] },
+  { agentName: "auto_summary", enabled: true, mode: "auto", schedule: "*/30 * * * *", languages: ["en", "es", "fr", "it"] },
 ];
 
 async function main() {

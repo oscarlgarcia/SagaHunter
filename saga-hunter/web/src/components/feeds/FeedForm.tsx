@@ -9,6 +9,8 @@ interface FeedFormData {
   sourceType: "news" | "curiosity" | "trend";
   language: string;
   intervalMinutes: number;
+  maxPages: number | null;
+  maxEntries: number | null;
 }
 
 interface FeedFormProps {
@@ -23,6 +25,8 @@ const DEFAULT_FORM: FeedFormData = {
   sourceType: "news",
   language: "en",
   intervalMinutes: 360,
+  maxPages: 5,
+  maxEntries: 50,
 };
 
 export function FeedForm({ initial, onSubmit, onCancel }: FeedFormProps) {
@@ -31,6 +35,11 @@ export function FeedForm({ initial, onSubmit, onCancel }: FeedFormProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit(form);
+  };
+
+  const setNum = (key: "maxPages" | "maxEntries", val: string) => {
+    const num = parseInt(val);
+    setForm({ ...form, [key]: val === "" || isNaN(num) ? null : num });
   };
 
   return (
@@ -93,6 +102,32 @@ export function FeedForm({ initial, onSubmit, onCancel }: FeedFormProps) {
             onChange={(e) => setForm({ ...form, intervalMinutes: parseInt(e.target.value) || 360 })}
             className="w-full rounded-lg border-gray-300 text-sm"
           />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Max Pages</label>
+          <input
+            type="number"
+            min={1}
+            value={form.maxPages ?? ""}
+            onChange={(e) => setNum("maxPages", e.target.value)}
+            className="w-full rounded-lg border-gray-300 text-sm"
+            placeholder="Unlimited"
+          />
+          <p className="text-xs text-gray-400 mt-0.5">Pages to paginate (empty = unlimited)</p>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Max Entries</label>
+          <input
+            type="number"
+            min={1}
+            value={form.maxEntries ?? ""}
+            onChange={(e) => setNum("maxEntries", e.target.value)}
+            className="w-full rounded-lg border-gray-300 text-sm"
+            placeholder="Unlimited"
+          />
+          <p className="text-xs text-gray-400 mt-0.5">Entries per feed run (empty = unlimited)</p>
         </div>
       </div>
       <div className="flex justify-end gap-2 pt-2">

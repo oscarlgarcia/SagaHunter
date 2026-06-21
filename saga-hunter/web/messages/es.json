@@ -28,7 +28,9 @@
   "seed": {
     "title": "Detalle de Semilla",
     "export": "Exportar",
+    "export_tooltip": "Exportar esta semilla como JSON",
     "raw": "Contenido Original",
+    "raw_tab": "Texto Original",
     "analysis": "Análisis",
     "creative": "Creativo",
     "publishing": "Publicación",
@@ -37,7 +39,97 @@
     "status": "Estado",
     "language": "Idioma",
     "story": "Historia",
-    "no_analysis": "Sin análisis. Configura agentes para procesar esta semilla."
+    "story_status": "Estado de la historia:",
+    "story_created": "Creada",
+    "source_link": "Enlace Fuente",
+    "not_found": "Semilla no encontrada",
+    "delete_modal_title": "Eliminar Semilla",
+    "delete_confirm": "¿Estás seguro de eliminar esta semilla y todos sus enriquecimientos?",
+    "delete_warning": "Esta acción no se puede deshacer.",
+    "deleting": "Eliminando...",
+    "delete_error": "Error al eliminar la semilla",
+    "delete_tooltip": "Eliminar esta semilla",
+    "no_analysis": "Sin análisis. Configura agentes para procesar esta semilla.",
+    "heuristic": "Heurístico",
+    "ai": "IA",
+    "generating_progress": "Generando {current}/{total}...",
+    "generate_all": "Generar Todo ({count})",
+    "regenerate_with_ai": "Regenerar con IA",
+    "generating_with_time": "Generando... ({elapsed}s)",
+    "generate_with_ai": "Generar con IA",
+    "llm_error": "El enriquecimiento con LLM falló. ¿Está Ollama funcionando?",
+    "bulk_generation_result": "Generado {success}/{total}. Errores: {errors}",
+    "bulk_generation_done": "Los {total} enriquecimientos se generaron",
+    "agents": {
+      "character_harvester": "Cosechador de Personajes",
+      "world_builder": "Constructor de Mundos",
+      "voice_tuner": "Afinador de Voz",
+      "what_if_generator": "Generador de Qué Pasaría Si",
+      "what_if": "Qué Pasaría Si",
+      "angle_finder": "Buscador de Ángulos",
+      "story_structurer": "Estructurador de Historias",
+      "genre_classifier": "Clasificador de Géneros",
+      "find_the_angle": "Encuentra el Ángulo",
+      "story_structure": "Estructura de Historia",
+      "kindle_pre_check": "Pre-Verificación Kindle",
+      "blurb_generator": "Generador de Sinopsis",
+      "series_connector": "Conector de Series",
+      "plot_hole_detector": "Detector de Agujeros de Trama"
+    },
+    "enrichment": {
+      "plot_hole_detector": {
+        "grade": "Calificación",
+        "consistency": "Consistencia",
+        "issues": "Problemas",
+        "critical": "crítico",
+        "major": "mayor",
+        "minor": "menor",
+        "no_issues": "No se detectaron problemas",
+        "consistent": "Tu narrativa parece consistente en todos los enriquecimientos.",
+        "based_on": "Basado en {count} enriquecimientos"
+      },
+      "series_connector": {
+        "connects_to": "Esta semilla se conecta con {count} otras semillas.",
+        "no_connections": "No se encontraron conexiones."
+      },
+      "blurb_generator": {
+        "genre": "Género:",
+        "best_for": "Mejor para:",
+        "words": "{count} palabras"
+      },
+      "voice_tuner": {
+        "pov": "POV",
+        "tense": "Tiempo",
+        "register": "Registro",
+        "pacing": "Ritmo",
+        "mood": "Ambiente",
+        "readability": "Legibilidad",
+        "style_exploration": "Exploración de Estilo",
+        "original": "Original",
+        "try": "Probar"
+      },
+      "character_harvester": {
+        "no_characters": "No se detectaron personajes en esta semilla.",
+        "main": "Principal",
+        "motivations": "Motivaciones:",
+        "potential_arcs": "Arcos potenciales:"
+      },
+      "world_builder": {
+        "setting": "Escenario",
+        "tech_level": "Nivel tecnológico",
+        "geography": "Geografía",
+        "atmosphere": "Atmósfera",
+        "magic": "Magia",
+        "no_magic": "Sin Magia",
+        "factions": "Facciones",
+        "world_rules": "Reglas del Mundo"
+      },
+      "what_if_generator": {
+        "original": "Original",
+        "protagonist": "Protagonista",
+        "impact": "impacto {level}"
+      }
+    }
   },
   "agents": {
     "title": "Agentes",

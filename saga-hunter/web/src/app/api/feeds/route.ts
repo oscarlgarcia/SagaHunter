@@ -8,6 +8,8 @@ const FeedInput = z.object({
   sourceType: z.enum(["news", "curiosity", "trend"]),
   language: z.string().length(2),
   intervalMinutes: z.number().int().positive().optional(),
+  maxPages: z.number().int().positive().optional().nullable(),
+  maxEntries: z.number().int().positive().optional().nullable(),
 });
 
 export async function GET() {

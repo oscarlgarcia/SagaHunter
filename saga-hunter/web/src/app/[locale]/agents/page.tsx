@@ -41,13 +41,15 @@ const AGENT_META: Record<string, { icon: React.ReactNode; description: string }>
   blurb_generator: { icon: <BookText className="w-6 h-6" />, description: "Generates multiple blurb variants from seeds and their enrichments" },
   series_connector: { icon: <GitBranch className="w-6 h-6" />, description: "Detects connections between seeds to form series and sagas" },
   plot_hole_detector: { icon: <Bug className="w-6 h-6" />, description: "Detects narrative inconsistencies and plot holes across enrichments" },
+  story_critique: { icon: <BookText className="w-6 h-6" />, description: "Analyzes narrative coherence, pacing, and emotional arc via LLM" },
+  auto_summary: { icon: <Sparkles className="w-6 h-6" />, description: "Generates a concise LLM summary when all enrichments complete" },
 };
 
 const PIPELINE_STAGES: { key: string; icon: React.ReactNode; agents: string[] }[] = [
   { key: "mining", icon: <Radio className="w-5 h-5" />, agents: ["news_aggregator", "curiosity_engine", "trend_hunter"] },
   { key: "analysis", icon: <Search className="w-5 h-5" />, agents: ["angle_finder", "story_structurer", "genre_classifier"] },
   { key: "creative", icon: <Sparkles className="w-5 h-5" />, agents: ["what_if_generator", "world_builder", "character_harvester", "voice_tuner"] },
-  { key: "publishing", icon: <Send className="w-5 h-5" />, agents: ["blurb_generator", "series_connector", "plot_hole_detector"] },
+  { key: "publishing", icon: <Send className="w-5 h-5" />, agents: ["blurb_generator", "series_connector", "plot_hole_detector", "story_critique", "auto_summary"] },
 ];
 
 const STAGE_COLORS: Record<string, { border: string; bg: string; text: string; dot: string }> = {
@@ -68,6 +70,9 @@ export default function AgentsPage() {
   const [promptModal, setPromptModal] = useState<{ agentName: string; prompt: string; defaultPrompt: string; isCustom: boolean } | null>(null);
   const [savingPrompt, setSavingPrompt] = useState(false);
   const [promptToast, setPromptToast] = useState<string | null>(null);
+  const [timingModal, setTimingModal] = useState<{ agentName: string; intervalMinutes: number; timeoutSeconds: number } | null>(null);
+  const [savingTiming, setSavingTiming] = useState(false);
+  const [timingToast, setTimingToast] = useState<string | null>(null);
 
   const fetchAgents = async () => {
     try {
@@ -98,6 +103,12 @@ export default function AgentsPage() {
     const t = setTimeout(() => setPromptToast(null), 4000);
     return () => clearTimeout(t);
   }, [promptToast]);
+
+  useEffect(() => {
+    if (!timingToast) return;
+    const t = setTimeout(() => setTimingToast(null), 4000);
+    return () => clearTimeout(t);
+  }, [timingToast]);
 
   const openPromptModal = async (agentName: string) => {
     try {
@@ -134,6 +145,41 @@ export default function AgentsPage() {
       setPromptToast("Failed to save prompt");
     } finally {
       setSavingPrompt(false);
+    }
+  };
+
+  const openTimingModal = (agent: AgentConfig) => {
+    setTimingModal({
+      agentName: agent.agentName,
+      intervalMinutes: agent.params?.interval_minutes || 15,
+      timeoutSeconds: agent.params?.timeout_seconds || 300,
+    });
+  };
+
+  const saveTiming = async () => {
+    if (!timingModal) return;
+    setSavingTiming(true);
+    try {
+      const r = await fetch("/api/agents", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agentName: timingModal.agentName,
+          intervalMinutes: timingModal.intervalMinutes,
+          timeoutSeconds: timingModal.timeoutSeconds,
+        }),
+      });
+      if (r.ok) {
+        setTimingToast("Timing saved");
+        setTimingModal(null);
+        fetchAgents();
+      } else {
+        setTimingToast("Failed to save timing");
+      }
+    } catch {
+      setTimingToast("Failed to save timing");
+    } finally {
+      setSavingTiming(false);
     }
   };
 
@@ -231,6 +277,14 @@ export default function AgentsPage() {
                 title="Configure LLM prompt"
               >
                 Prompt
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => openTimingModal(agent)}
+                title="Configure timing"
+              >
+                Timing
               </Button>
               <Button
                 size="sm"
@@ -391,11 +445,72 @@ export default function AgentsPage() {
         </div>
       )}
 
+      {timingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => !savingTiming && setTimingModal(null)}>
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Timing — {timingModal.agentName}</h3>
+              <button onClick={() => setTimingModal(null)} className="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Interval (minutes)</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={1440}
+                  value={timingModal.intervalMinutes}
+                  onChange={(e) => setTimingModal({ ...timingModal, intervalMinutes: parseInt(e.target.value) || 15 })}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-saga-500 focus:border-transparent"
+                />
+                <p className="text-xs text-gray-400 mt-1">How often this agent runs in auto mode (1–1440 min)</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Timeout (seconds)</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={3600}
+                  value={timingModal.timeoutSeconds}
+                  onChange={(e) => setTimingModal({ ...timingModal, timeoutSeconds: parseInt(e.target.value) || 300 })}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-saga-500 focus:border-transparent"
+                />
+                <p className="text-xs text-gray-400 mt-1">Max execution time per run (1–3600 s)</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 mt-6">
+              <button
+                onClick={() => setTimingModal(null)}
+                disabled={savingTiming}
+                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveTiming}
+                disabled={savingTiming}
+                className="px-4 py-2 text-sm font-medium text-white bg-saga-600 hover:bg-saga-700 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {savingTiming ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {promptToast && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium bg-green-600 text-white">
           <span>✓</span>
           <span>{promptToast}</span>
           <button onClick={() => setPromptToast(null)} className="ml-2 opacity-70 hover:opacity-100">✕</button>
+        </div>
+      )}
+
+      {timingToast && (
+        <div className="fixed bottom-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium bg-green-600 text-white">
+          <span>✓</span>
+          <span>{timingToast}</span>
+          <button onClick={() => setTimingToast(null)} className="ml-2 opacity-70 hover:opacity-100">✕</button>
         </div>
       )}
     </div>

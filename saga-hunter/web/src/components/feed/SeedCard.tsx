@@ -12,6 +12,7 @@ interface Seed {
   id: string;
   title: string;
   sourceType: string;
+  sourceUrl: string | null;
   sourceName: string | null;
   language: string;
   narrativeScore: number | null;
@@ -80,6 +81,11 @@ export function SeedCard({ filter }: SeedCardProps) {
                 <span className="text-xs text-gray-400 uppercase">
                   {seed.sourceName || seed.sourceType}
                 </span>
+                {seed.sourceUrl && (
+                  <span onClick={(e) => { e.stopPropagation(); if (seed.sourceUrl) window.open(seed.sourceUrl, '_blank', 'noreferrer'); }} className="text-xs text-saga-500 hover:text-saga-700 hover:underline shrink-0 cursor-pointer">
+                    ↗
+                  </span>
+                )}
                 <span className="text-xs text-gray-300">·</span>
                 <span className="text-xs text-gray-400 uppercase">{seed.language}</span>
               </div>

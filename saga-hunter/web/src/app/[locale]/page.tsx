@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { FilterBar } from "@/components/feed/FilterBar";
 import { SourceIcon } from "@/components/ui/SourceIcon";
+import { AnimatedCounter } from "@/components/ui/AnimatedCounter";
+import { useEventStream } from "@/hooks/useEventStream";
 import { cn, formatScore, scoreColor, statusColor } from "@/lib/utils";
 
 type Filter = "all" | "news" | "curiosity" | "trend";
@@ -21,6 +23,7 @@ interface Seed {
   id: string;
   title: string;
   sourceType: string;
+  sourceUrl: string | null;
   sourceName: string | null;
   language: string;
   narrativeScore: number | null;
@@ -60,6 +63,7 @@ function ConfirmBar({ message, onConfirm, onCancel }: { message: string; onConfi
 
 export default function DashboardPage() {
   const t = useTranslations("home");
+  const tc = useTranslations("common");
   const [activeFilter, setActiveFilter] = useState<Filter>("all");
   const [stats, setStats] = useState<Stats | null>(null);
   const [seeds, setSeeds] = useState<Seed[]>([]);
@@ -67,26 +71,86 @@ export default function DashboardPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmAction, setConfirmAction] = useState<"delete-all" | "delete-selected" | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [search, setSearch] = useState("");
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [sortBy, setSortBy] = useState<string>("score");
+  const { events } = useEventStream();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchTimer = useRef<ReturnType<typeof setTimeout>>();
+  const lastSearch = useRef("");
 
-  const fetchSeeds = useCallback(() => {
-    setLoading(true);
-    const params = new URLSearchParams({ sortBy: "score" });
-    if (activeFilter !== "all") params.set("sourceType", activeFilter);
-    fetch(`/api/seeds?${params}`)
-      .then((r) => r.json())
-      .then((data) => setSeeds(data.seeds || []))
-      .catch(() => setSeeds([]))
-      .finally(() => setLoading(false));
-  }, [activeFilter]);
-
-  useEffect(() => {
+  const refreshStats = useCallback(() => {
     fetch("/api/stats")
       .then((r) => r.json())
       .then(setStats)
       .catch(() => {});
   }, []);
 
+  const cursorRef = useRef<string | null>(null);
+
+  const fetchSeeds = useCallback((append = false) => {
+    if (!append) setLoading(true);
+    else setLoadingMore(true);
+    const params = new URLSearchParams({ sortBy, limit: "20" });
+    if (activeFilter !== "all") params.set("sourceType", activeFilter);
+    if (lastSearch.current) params.set("search", lastSearch.current);
+    if (append && cursorRef.current) params.set("cursor", cursorRef.current);
+    fetch(`/api/seeds?${params}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (append) {
+          setSeeds((prev) => [...prev, ...(data.seeds || [])]);
+        } else {
+          setSeeds(data.seeds || []);
+        }
+        cursorRef.current = data.nextCursor;
+        setHasMore(data.hasMore);
+      })
+      .catch(() => {
+        if (!append) setSeeds([]);
+      })
+      .finally(() => {
+        setLoading(false);
+        setLoadingMore(false);
+      });
+  }, [activeFilter, sortBy]);
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      lastSearch.current = value;
+      cursorRef.current = null;
+      setHasMore(false);
+      fetchSeeds();
+    }, 300);
+  };
+
+  const loadMore = () => fetchSeeds(true);
+
+  useEffect(() => {
+    refreshStats();
+  }, [refreshStats]);
+
   useEffect(() => { fetchSeeds(); }, [fetchSeeds]);
+
+  useEffect(() => {
+    if (events.length === 0) return;
+    const latest = events[0];
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      if (
+        latest.channel === "sagahunter:seeds:new" ||
+        latest.channel === "sagahunter:enrichment:new" ||
+        latest.channel === "sagahunter:agent:run"
+      ) {
+        fetchSeeds();
+        refreshStats();
+      }
+    }, 2000);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [events, fetchSeeds, refreshStats]);
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -155,38 +219,102 @@ export default function DashboardPage() {
 
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-2xl font-bold text-gray-900">{stats.totalSeeds}</p>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+            <p className="text-2xl font-bold text-gray-900 dark:text-white"><AnimatedCounter value={stats.totalSeeds} /></p>
             <p className="text-xs text-gray-500 mt-1">{t("total_seeds")}</p>
           </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-2xl font-bold text-saga-600">{stats.totalEnrichments}</p>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+            <p className="text-2xl font-bold text-saga-600"><AnimatedCounter value={stats.totalEnrichments} /></p>
             <p className="text-xs text-gray-500 mt-1">{t("enrichments")}</p>
           </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-2xl font-bold text-blue-600">{stats.totalFeeds}</p>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+            <p className="text-2xl font-bold text-blue-600"><AnimatedCounter value={stats.totalFeeds} /></p>
             <p className="text-xs text-gray-500 mt-1">{t("active_feeds")}</p>
           </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-2xl font-bold text-purple-600">{stats.agentRunCount}</p>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+            <p className="text-2xl font-bold text-purple-600"><AnimatedCounter value={stats.agentRunCount} /></p>
             <p className="text-xs text-gray-500 mt-1">{t("agent_runs")}</p>
           </div>
         </div>
       )}
 
+      {/* Live feed */}
+      {seeds.length > 0 && (
+        <div className="mb-6 overflow-hidden">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Live Feed</span>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+            {seeds.slice(0, 6).map((seed, i) => (
+              <Link
+                key={seed.id}
+                href={`/seed/${seed.id}`}
+                className="animate-fade-in shrink-0 w-56 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-3 hover:shadow-md transition-all"
+                style={{ animationDelay: `${i * 80}ms`, animationFillMode: "backwards" }}
+              >
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <SourceIcon type={seed.sourceType} className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="text-[10px] text-gray-400 truncate flex-1">{seed.sourceName || seed.sourceType}</span>
+                  <span className={cn("text-xs font-bold tabular-nums", scoreColor(seed.narrativeScore))}>
+                    {formatScore(seed.narrativeScore)}
+                  </span>
+                </div>
+                <p className="text-xs font-medium text-gray-800 dark:text-gray-200 line-clamp-2 leading-snug">
+                  {seed.title}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="mb-4">
+        <input
+          value={search}
+          onChange={(e) => handleSearchChange(e.target.value)}
+          placeholder={tc("search")}
+          className="w-full px-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-saga-500 focus:border-transparent placeholder:text-gray-400"
+        />
+      </div>
+
       <div className="flex items-center justify-between mb-6">
-        <FilterBar active={activeFilter} onChange={(f) => { setActiveFilter(f); setSelectedIds(new Set()); }} />
-        {seeds.length > 0 && (
+        <FilterBar active={activeFilter} onChange={(f) => { setActiveFilter(f); setSearch(""); lastSearch.current = ""; cursorRef.current = null; setSelectedIds(new Set()); }} />
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => setConfirmAction("delete-all")}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 border border-red-200 transition-colors"
+            onClick={() => { setSortBy("score"); cursorRef.current = null; }}
+            className={cn(
+              "px-3 py-1.5 text-xs font-medium rounded-lg transition-colors",
+              sortBy === "score"
+                ? "bg-saga-100 text-saga-700 ring-1 ring-saga-300"
+                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+            )}
           >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-            </svg>
-            Delete All
+            Best Score
           </button>
-        )}
+          <button
+            onClick={() => { setSortBy("date"); cursorRef.current = null; }}
+            className={cn(
+              "px-3 py-1.5 text-xs font-medium rounded-lg transition-colors",
+              sortBy === "date"
+                ? "bg-saga-100 text-saga-700 ring-1 ring-saga-300"
+                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+            )}
+          >
+            Most Recent
+          </button>
+          {seeds.length > 0 && (
+            <button
+              onClick={() => setConfirmAction("delete-all")}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 border border-red-200 transition-colors"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              </svg>
+              Delete All
+            </button>
+          )}
+        </div>
       </div>
 
       {loading ? (
@@ -240,6 +368,11 @@ export default function DashboardPage() {
                         <SourceIcon type={seed.sourceType} className="w-5 h-5" />
                       </span>
                       <span className="text-xs text-gray-400 uppercase">{seed.sourceName || seed.sourceType}</span>
+                      {seed.sourceUrl && (
+                        <span onClick={(e) => { e.stopPropagation(); if (seed.sourceUrl) window.open(seed.sourceUrl, '_blank', 'noreferrer'); }} className="text-xs text-saga-500 hover:text-saga-700 hover:underline shrink-0 cursor-pointer">
+                          ↗
+                        </span>
+                      )}
                       <span className="text-xs text-gray-300">·</span>
                       <span className="text-xs text-gray-400 uppercase">{seed.language}</span>
                     </div>
@@ -257,6 +390,24 @@ export default function DashboardPage() {
               </Link>
             </div>
           ))}
+          {hasMore && (
+            <div className="flex justify-center pt-2 pb-4">
+              <button
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="px-6 py-2.5 text-sm font-medium text-saga-600 bg-saga-50 hover:bg-saga-100 border border-saga-200 rounded-xl transition-colors disabled:opacity-50"
+              >
+                {loadingMore ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                    Loading...
+                  </span>
+                ) : (
+                  "Load more"
+                )}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
