@@ -16,8 +16,5 @@ npx prisma generate
 echo "Pushing schema to database..."
 npx prisma db push
 
-echo "Running seed data..."
-npx prisma db seed
-
 echo "Starting supervisord..."
 exec supervisord -c /app/supervisord.conf

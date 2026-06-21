@@ -75,7 +75,9 @@ if [ -f "sagahunter_data.sql" ]; then
     docker compose -f "$COMPOSE_FILE" exec -T postgres psql -U sagahunter sagahunter < sagahunter_data.sql
     echo "Datos restaurados correctamente"
 else
-    echo "Sin backup. La app creará los datos por defecto al iniciar."
+    echo "Ejecutando seed inicial (feeds, agent_configs, pipelines)..."
+    docker compose -f "$COMPOSE_FILE" run --rm saga-hunter sh -c "cd /app/web && npx prisma db seed"
+    echo "Seed completado"
 fi
 echo "OK"
 
