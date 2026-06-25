@@ -112,14 +112,91 @@ model AgentConnection {
 }
 
 model Story {
-  id          String    @id @default(uuid())
-  seedId      String    @unique @map("seed_id")
-  title       String
-  status      String    @default("outline")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  publishedAt DateTime? @map("published_at")
+  id                String    @id @default(uuid())
+  seedId            String?   @unique @map("seed_id")
+  title             String
+  type              String?
+  synopsis          String?
+  targetChapters    Int?      @map("target_chapters")
+  targetWordCount   Int?      @map("target_word_count")
+  narrativeStructure String?  @map("narrative_structure")
+  pov               String?
+  tense             String?
+  register          String?
+  pacing            String?
+  mood              String?
+  premise           String?
+  status            String    @default("outline")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  publishedAt       DateTime? @map("published_at")
 
-  seed Seed @relation(fields: [seedId], references: [id])
+  seed       Seed?            @relation(fields: [seedId], references: [id])
+  chapters   StoryChapter[]
+  characters StoryCharacter[]
+  locations  StoryLocation[]
+  arcs       StoryArc[]
 
   @@map("stories")
+}
+
+model StoryChapter {
+  id              String   @id @default(uuid())
+  storyId         String   @map("story_id")
+  chapterNumber   Int      @map("chapter_number")
+  title           String
+  synopsis        String?
+  wordCountTarget Int?     @map("word_count_target")
+  scenes          Json?
+  status          String   @default("outline")
+  arcId           String?  @map("arc_id")
+
+  story Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  arc   StoryArc? @relation(fields: [arcId], references: [id])
+
+  @@unique([storyId, chapterNumber])
+  @@map("story_chapters")
+}
+
+model StoryCharacter {
+  id            String  @id @default(uuid())
+  storyId       String  @map("story_id")
+  name          String
+  archetype     String?
+  role          String?
+  traits        Json?
+  backstory     String?
+  arc           String?
+  relationships Json?
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@map("story_characters")
+}
+
+model StoryLocation {
+  id                String  @id @default(uuid())
+  storyId           String  @map("story_id")
+  name              String
+  type              String?
+  description       String?
+  significance      String?
+  chaptersFeatured Json?   @map("chapters_featured")
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@map("story_locations")
+}
+
+model StoryArc {
+  id                  String  @id @default(uuid())
+  storyId             String  @map("story_id")
+  name                String
+  description         String?
+  chaptersInvolved    Json?   @map("chapters_involved")
+  charactersInvolved  Json?   @map("characters_involved")
+
+  story    Story          @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  chapters StoryChapter[]
+
+  @@map("story_arcs")
 }

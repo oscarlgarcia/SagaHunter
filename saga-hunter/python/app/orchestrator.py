@@ -105,6 +105,7 @@ def _get_agent_params(agent_name: str) -> dict:
 
 def _run_single_agent(agent) -> bool:
     try:
+        publish_event("agent:start", f"{agent.name}|{agent.description}")
         result = agent.execute()
         if result.success:
             _log_run(agent.name, "success", result.seeds_created, result.message)

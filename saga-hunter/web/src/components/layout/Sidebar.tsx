@@ -2,17 +2,18 @@
 
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { LayoutDashboard, Columns3, Rss, Bot, GitBranch, Languages, Check, Moon, Sun } from "lucide-react";
+import { LayoutDashboard, BookText, Rss, Bot, GitBranch, Activity, Languages, Check, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { useTheme } from "./ThemeProvider";
 
 const NAV_ITEMS = [
   { href: "/", icon: LayoutDashboard, key: "dashboard" },
-  { href: "/board", icon: Columns3, key: "board" },
+  { href: "/stories", icon: BookText, key: "stories" },
   { href: "/feeds", icon: Rss, key: "feeds" },
   { href: "/agents", icon: Bot, key: "agents" },
   { href: "/pipelines", icon: GitBranch, key: "pipelines" },
+  { href: "/monitor", icon: Activity, key: "monitor" },
 ];
 
 const LOCALES = ["en", "es", "fr", "it"];

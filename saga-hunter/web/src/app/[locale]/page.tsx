@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FilterBar } from "@/components/feed/FilterBar";
 import { SourceIcon } from "@/components/ui/SourceIcon";
 import { AnimatedCounter } from "@/components/ui/AnimatedCounter";
@@ -64,6 +65,7 @@ function ConfirmBar({ message, onConfirm, onCancel }: { message: string; onConfi
 export default function DashboardPage() {
   const t = useTranslations("home");
   const tc = useTranslations("common");
+  const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<Filter>("all");
   const [stats, setStats] = useState<Stats | null>(null);
   const [seeds, setSeeds] = useState<Seed[]>([]);
@@ -75,6 +77,7 @@ export default function DashboardPage() {
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [sortBy, setSortBy] = useState<string>("score");
+  const [developing, setDeveloping] = useState(false);
   const { events } = useEventStream();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -207,6 +210,25 @@ export default function DashboardPage() {
       setToast({ message: "Delete failed. Is the server running?", type: "error" });
     }
   }, [selectedIds, fetchSeeds]);
+
+  const handleDevelopSelected = useCallback(async () => {
+    setDeveloping(true);
+    const ids = Array.from(selectedIds);
+    let count = 0;
+    for (const seedId of ids) {
+      try {
+        const r = await fetch("/api/stories", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ seedId, title: seeds.find(s => s.id === seedId)?.title || "Untitled" }),
+        });
+        if (r.ok) count++;
+      } catch { /* skip failures */ }
+    }
+    setDeveloping(false);
+    setSelectedIds(new Set());
+    setToast({ message: `Developed ${count} stories`, type: "success" });
+  }, [selectedIds, seeds]);
 
   return (
     <div>
@@ -415,7 +437,10 @@ export default function DashboardPage() {
         <div className="fixed bottom-0 left-64 right-0 z-40 bg-white border-t border-gray-200 shadow-lg px-6 py-3 flex items-center justify-between">
           <p className="text-sm text-gray-600">{selectedIds.size} selected</p>
           <div className="flex items-center gap-3">
-            <button onClick={() => setSelectedIds(new Set())} className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors">Clear</button>
+            <button onClick={() => setSelectedIds(new Set())} className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors">{t("clear_selection")}</button>
+            <button onClick={handleDevelopSelected} disabled={developing} className="px-4 py-1.5 text-sm font-medium text-white bg-saga-600 hover:bg-saga-700 rounded-lg transition-colors disabled:opacity-50">
+              {developing ? "Developing..." : `Develop (${selectedIds.size})`}
+            </button>
             <button onClick={() => setConfirmAction("delete-selected")} className="px-4 py-1.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
               Delete Selected
             </button>

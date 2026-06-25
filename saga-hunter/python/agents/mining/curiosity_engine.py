@@ -5,6 +5,7 @@ from datetime import datetime
 
 from agents.base import BaseAgent, AgentResult, compute_narrative_score
 from app.database import execute
+from app.redis_client import publish_event
 
 logger = logging.getLogger(__name__)
 
@@ -33,12 +34,17 @@ class CuriosityEngine(BaseAgent):
     description = "Discovers curious historical events, unsolved mysteries, and scientific oddities"
 
     def execute(self) -> AgentResult:
+        existing = execute("SELECT source_url FROM seeds", fetch=True)
+        self._existing_urls = {row[0] for row in existing}
+
         feeds = self._get_curiosity_feeds()
         created = 0
-        for feed in feeds:
+        for idx, feed in enumerate(feeds):
             feed_id, name, url, source_type, language = feed[:5]
+            publish_event("agent:progress", f"{self.name}|📡 Curiosity feed {idx+1}/{len(feeds)}: {name}")
             created += self._process_curiosity_feed(url, name, source_type, language, feed_id)
 
+        publish_event("agent:progress", f"{self.name}|🌐 Querying Wikipedia...")
         created += self._scrape_wikipedia()
         return AgentResult(success=True, message="Curiosity Engine completed", seeds_created=created)
 
@@ -64,13 +70,14 @@ class CuriosityEngine(BaseAgent):
         created = 0
         for entry in parsed.entries[:10]:
             article_url = entry.get("link", "")
-            if not article_url or self._seed_exists(article_url):
+            if not article_url or article_url in self._existing_urls:
                 continue
             title = entry.get("title", "Untitled")
             summary = entry.get("summary", "") or entry.get("description", "")
             text = f"{title}. {summary}"
             score = compute_narrative_score(text, language)
             self._save_seed(title, source_type, article_url, name, text, language, score)
+            self._existing_urls.add(article_url)
             created += 1
 
         execute("UPDATE feeds SET last_fetched_at = NOW() WHERE id = %s", (feed_id,))
@@ -80,12 +87,13 @@ class CuriosityEngine(BaseAgent):
         created = 0
         client = httpx.Client(timeout=30)
         for query in QUERIES:
+            publish_event("agent:progress", f"{self.name}|🌐 Wikipedia: {query['title']}")
             try:
                 r = client.get(WIKI_API_URL, params=query["api_params"])
                 data = r.json()
                 pages = self._extract_pages(data)
                 for page_title, page_url, extract_text in pages:
-                    if self._seed_exists(page_url):
+                    if page_url in self._existing_urls:
                         continue
                     score = compute_narrative_score(extract_text, "en")
                     self._save_seed(
@@ -97,6 +105,7 @@ class CuriosityEngine(BaseAgent):
                         language="en",
                         narrative_score=score,
                     )
+                    self._existing_urls.add(page_url)
                     created += 1
             except Exception as e:
                 logger.error("Wikipedia query failed: %s", e)

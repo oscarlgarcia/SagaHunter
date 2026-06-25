@@ -15,6 +15,7 @@ DetectorFactory.seed = 42
 
 from agents.base import BaseAgent, AgentResult, compute_narrative_score
 from app.database import execute
+from app.redis_client import publish_event
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ NEWSPAPER_CFG = None
 if NewspaperConfig:
     NEWSPAPER_CFG = NewspaperConfig()
     NEWSPAPER_CFG.memoize_articles = False
+    NEWSPAPER_CFG.request_timeout = 15
     NEWSPAPER_CFG.user_agent = (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -47,9 +49,13 @@ class NewsAggregator(BaseAgent):
             logger.info("No enabled feeds found")
             return AgentResult(success=True, message="No enabled feeds", seeds_created=0)
 
+        existing = execute("SELECT source_url FROM seeds", fetch=True)
+        self._existing_urls = {row[0] for row in existing}
+
         total_created = 0
-        for row in feeds:
+        for idx, row in enumerate(feeds):
             feed_id, name, url, source_type, language, interval_min, last_fetched, max_pages, max_entries = row
+            publish_event("agent:progress", f"{self.name}|📡 Feed {idx+1}/{len(feeds)}: {name}")
             created = self._process_feed(feed_id, name, url, source_type, language, interval_min, last_fetched, max_pages, max_entries)
             total_created += created
 
@@ -94,16 +100,20 @@ class NewsAggregator(BaseAgent):
                 logger.info("Feed %s: page %d has no entries, stopping", feed_name, page)
                 break
 
-            for entry in entries:
+            for entry_idx, entry in enumerate(entries):
                 if max_entries is not None and total_seen >= max_entries:
                     break
 
                 article_url = entry.get("link", "")
-                if not article_url or self._seed_exists(article_url):
+                if not article_url or article_url in self._existing_urls:
                     total_seen += 1
                     continue
 
                 title = entry.get("title", "Untitled")
+
+                if total_seen % 5 == 0:
+                    publish_event("agent:progress", f"{self.name}|📄 ({total_seen + 1}) {title[:60]}")
+
                 raw_text = self._extract_text(article_url, title)
                 if not raw_text:
                     total_seen += 1
@@ -125,6 +135,7 @@ class NewsAggregator(BaseAgent):
                     language=detected_lang,
                     narrative_score=score,
                 )
+                self._existing_urls.add(article_url)
                 total_created += 1
                 total_seen += 1
 

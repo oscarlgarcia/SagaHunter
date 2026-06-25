@@ -7,6 +7,7 @@ export async function GET(req: NextRequest) {
 
   const stream = new ReadableStream({
     start(controller) {
+      redisSubscriber.start();
       redisSubscriber.register({
         id,
         write: (data: string) => {

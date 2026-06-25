@@ -4,7 +4,8 @@
     "agents": "Agenti",
     "feeds": "Fonti",
     "board": "Bacheca",
-    "pipelines": "Pipeline"
+    "pipelines": "Pipeline",
+    "monitor": "Monitor"
   },
   "home": {
     "title": "Dashboard",
@@ -209,6 +210,31 @@
     "delete": "Elimina",
     "search": "Cerca...",
     "no_results": "Nessun risultato"
+  },
+  "monitor": {
+    "title": "Monitor",
+    "subtitle": "Monitoraggio esecuzione agenti in tempo reale",
+    "currently_running": "In esecuzione",
+    "no_running": "Nessun agente in esecuzione",
+    "live_feed": "Feed in diretta",
+    "no_events": "In attesa di esecuzioni agenti...",
+    "pipeline_stats": "Statistiche Pipeline",
+    "total_runs": "esecuzioni",
+    "connected": "In diretta",
+    "disconnected": "Disconnesso",
+    "events_count": "eventi questa sessione",
+    "started": "avviato",
+    "success": "successo",
+    "fail": "fallito",
+    "crash": "crash",
+    "seeds": "semi",
+    "elapsed": "trascorso",
+    "stage_mining": "Estrazione",
+    "stage_analysis": "Analisi",
+    "stage_creative": "Creativo",
+    "stage_publishing": "Pubblicazione",
+    "clear": "Pulisci",
+    "seconds": "s"
   },
   "events": {
     "live": "In diretta",

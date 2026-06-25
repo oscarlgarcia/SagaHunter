@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { cn, formatScore, scoreColor, statusColor } from "@/lib/utils";
 import { SourceIcon } from "@/components/ui/SourceIcon";
+import { Sparkles, Loader2 } from "lucide-react";
 import type { Enrichment } from "@/components/seed/EnrichmentContent";
 
 const EnrichmentSection = lazy(() => import("@/components/seed/EnrichmentSection"));
@@ -61,6 +62,7 @@ export default function SeedDetailPage() {
   const [activeTab, setActiveTab] = useState<string>("raw");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [developing, setDeveloping] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   useEffect(() => {
@@ -94,6 +96,29 @@ export default function SeedDetailPage() {
       setDeleting(false);
     }
   }, [id, router]);
+
+  const handleDevelopStory = useCallback(async () => {
+    if (!seed) return;
+    setDeveloping(true);
+    try {
+      const r = await fetch("/api/stories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ seedId: seed.id, title: seed.title }),
+      });
+      if (r.ok) {
+        const data = await r.json();
+        if (data.story) router.push(`/stories/${data.story.id}`);
+        else setToast({ message: t("develop_error"), type: "error" });
+      } else {
+        setToast({ message: t("develop_error"), type: "error" });
+      }
+    } catch {
+      setToast({ message: t("develop_error"), type: "error" });
+    } finally {
+      setDeveloping(false);
+    }
+  }, [seed, router]);
 
   if (loading) {
     return (
@@ -259,8 +284,26 @@ export default function SeedDetailPage() {
               <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{t("story")}</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">{t("story_status")} {seed.story.status}</p>
               <p className="text-xs text-gray-400 mt-1">{t("story_created")} {new Date(seed.story.createdAt).toLocaleDateString()}</p>
+              <button
+                onClick={() => router.push(`/stories/${seed.story!.id}`)}
+                className="w-full mt-3 px-3 py-2 text-xs font-medium text-saga-700 bg-saga-50 hover:bg-saga-100 rounded-lg transition-colors"
+              >
+                {t("view_story")}
+              </button>
             </div>
           )}
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{t("develop_story")}</h3>
+            <p className="text-xs text-gray-500 mb-3">{t("develop_hint")}</p>
+            <button
+              onClick={handleDevelopStory}
+              disabled={developing}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-white bg-saga-600 hover:bg-saga-700 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {developing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              {t("develop")}
+            </button>
+          </div>
         </div>
       </div>
 

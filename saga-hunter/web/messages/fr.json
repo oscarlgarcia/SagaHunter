@@ -4,7 +4,8 @@
     "agents": "Agents",
     "feeds": "Sources",
     "board": "Tableau",
-    "pipelines": "Pipelines"
+    "pipelines": "Pipelines",
+    "monitor": "Moniteur"
   },
   "home": {
     "title": "Tableau de bord",
@@ -209,6 +210,31 @@
     "delete": "Supprimer",
     "search": "Rechercher...",
     "no_results": "Aucun résultat"
+  },
+  "monitor": {
+    "title": "Moniteur",
+    "subtitle": "Surveillance en temps réel des agents",
+    "currently_running": "En cours d'exécution",
+    "no_running": "Aucun agent en cours",
+    "live_feed": "Flux en direct",
+    "no_events": "En attente d'exécutions d'agents...",
+    "pipeline_stats": "Statistiques du Pipeline",
+    "total_runs": "exécutions",
+    "connected": "En direct",
+    "disconnected": "Déconnecté",
+    "events_count": "événements cette session",
+    "started": "démarré",
+    "success": "succès",
+    "fail": "échec",
+    "crash": "plantage",
+    "seeds": "graines",
+    "elapsed": "écoulé",
+    "stage_mining": "Extraction",
+    "stage_analysis": "Analyse",
+    "stage_creative": "Créatif",
+    "stage_publishing": "Publication",
+    "clear": "Effacer",
+    "seconds": "s"
   },
   "events": {
     "live": "En direct",

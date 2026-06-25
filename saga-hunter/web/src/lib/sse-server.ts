@@ -8,13 +8,14 @@ type SSEClient = {
 class RedisSubscriber {
   private sub: Redis | null = null;
   private clients: Map<string, SSEClient> = new Map();
-  private channels = ["sagahunter:seeds:new", "sagahunter:enrichment:new", "sagahunter:agent:run"];
+  private channels = ["sagahunter:seeds:new", "sagahunter:enrichment:new", "sagahunter:agent:run", "sagahunter:agent:start", "sagahunter:agent:progress", "sagahunter:story:progress", "sagahunter:story:complete"];
 
   async start() {
     if (this.sub) return;
     const url = process.env.REDIS_URL || "redis://localhost:6379/0";
-    this.sub = new Redis(url);
-    this.sub.on("connect", () => {
+    this.sub = new Redis(url, { enableReadyCheck: false });
+    this.sub.on("ready", () => {
+      console.log("[redis-subscriber] connected, subscribing to channels...");
       for (const ch of this.channels) {
         this.sub!.subscribe(ch);
       }
@@ -28,6 +29,9 @@ class RedisSubscriber {
           this.clients.delete(client.id);
         }
       }
+    });
+    this.sub.on("error", (err) => {
+      console.error("[redis-subscriber] error:", err.message);
     });
   }
 

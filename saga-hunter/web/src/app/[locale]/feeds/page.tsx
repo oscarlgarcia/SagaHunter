@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { FeedForm } from "@/components/feeds/FeedForm";
+import { BatchFeedForm } from "@/components/feeds/BatchFeedForm";
 
 interface Feed {
   id: string;
@@ -36,7 +37,10 @@ export default function FeedsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [batchModalOpen, setBatchModalOpen] = useState(false);
   const [editingFeed, setEditingFeed] = useState<Feed | null>(null);
+  const [reprocessing, setReprocessing] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const fetchFeeds = async () => {
     try {
@@ -100,6 +104,54 @@ export default function FeedsPage() {
     fetchFeeds();
   };
 
+  const handleReprocess = async () => {
+    setReprocessing(true);
+    try {
+      const r = await fetch("/api/feeds/reprocess", { method: "POST" });
+      const data = await r.json();
+      setToast({ message: `${data.reprocessed} feeds queued for reprocessing`, type: "success" });
+    } catch {
+      setToast({ message: "Failed to reprocess feeds", type: "error" });
+    }
+    setReprocessing(false);
+  };
+
+  const handleBatchSubmit = async (feeds: any[]) => {
+    try {
+      const r = await fetch("/api/feeds/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ feeds }),
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        setToast({ message: data.error || "Invalid request" , type: "error" });
+        setBatchModalOpen(false);
+        return;
+      }
+      const lines: string[] = [];
+      if (data.created > 0) lines.push(`${data.created} created`);
+      if (data.skipped > 0 && data.skippedUrls?.length > 0) {
+        lines.push(`${data.skipped} skipped (duplicates): ${data.skippedUrls.join(", ")}`);
+      } else if (data.skipped > 0) {
+        lines.push(`${data.skipped} skipped (duplicates)`);
+      }
+      if (data.validationErrors?.length > 0) {
+        const urls = data.validationErrors.map((e: any) => e.url).filter(Boolean).join(", ");
+        lines.push(`${data.validationErrors.length} invalid${urls ? `: ${urls}` : ""}`);
+      }
+      if (data.errors?.length > 0) {
+        const urls = data.errors.map((e: any) => e.url).filter(Boolean).join(", ");
+        lines.push(`${data.errors.length} failed${urls ? `: ${urls}` : ""}`);
+      }
+      setToast({ message: lines.join(" · ") || "No feeds processed", type: data.errors?.length > 0 || data.validationErrors?.length > 0 ? "error" : "success" });
+    } catch {
+      setToast({ message: "Failed to add feeds", type: "error" });
+    }
+    setBatchModalOpen(false);
+    fetchFeeds();
+  };
+
   if (error) {
     return (
       <div>
@@ -121,13 +173,30 @@ export default function FeedsPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t("title")}</h1>
-          <p className="text-sm text-gray-500 mt-1">{t("subtitle")}</p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{t("title")}</h1>
+            <p className="text-sm text-gray-500 mt-1">{t("subtitle")}</p>
+          </div>
+          {feeds.length > 0 && (
+            <span className="text-xs font-medium text-saga-600 bg-saga-50 px-2.5 py-1 rounded-full">
+              {feeds.length} total
+            </span>
+          )}
         </div>
-        <Button onClick={() => { setEditingFeed(null); setModalOpen(true); }}>
-          {t("add")}
-        </Button>
+        <div className="flex items-center gap-2">
+          {feeds.length > 0 && (
+            <Button variant="secondary" onClick={handleReprocess} disabled={reprocessing}>
+              {reprocessing ? "Reprocessing..." : "Reprocess All"}
+            </Button>
+          )}
+          <Button variant="secondary" onClick={() => setBatchModalOpen(true)}>
+            Batch Add
+          </Button>
+          <Button onClick={() => { setEditingFeed(null); setModalOpen(true); }}>
+            {t("add")}
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -215,6 +284,22 @@ export default function FeedsPage() {
           onCancel={() => setModalOpen(false)}
         />
       </Modal>
+
+      <Modal open={batchModalOpen} onClose={() => setBatchModalOpen(false)} title="Batch Add Feeds">
+        <BatchFeedForm onSubmit={handleBatchSubmit} onCancel={() => setBatchModalOpen(false)} />
+      </Modal>
+
+      {toast && (
+        <div
+          className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium transition-all ${
+            toast.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"
+          }`}
+        >
+          <span>{toast.type === "success" ? "✓" : "!"}</span>
+          <span>{toast.message}</span>
+          <button onClick={() => setToast(null)} className="ml-2 opacity-70 hover:opacity-100">✕</button>
+        </div>
+      )}
     </div>
   );
 }
