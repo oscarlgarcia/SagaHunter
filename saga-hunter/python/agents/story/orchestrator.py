@@ -39,8 +39,8 @@ def ensure_prerequisites(seed_id: str):
                 _run_single_agent(agent_class())
 
 
-def develop_story(seed_id: Optional[str] = None, title: str = "",
-                  premise: Optional[str] = None) -> Optional[str]:
+def create_story(seed_id: Optional[str] = None, title: str = "",
+                 premise: Optional[str] = None) -> Optional[str]:
     story_id = str(uuid.uuid4())
 
     if seed_id:
@@ -78,6 +78,41 @@ def develop_story(seed_id: Optional[str] = None, title: str = "",
     if seed_id:
         ensure_prerequisites(seed_id)
 
+    publish_event("story:progress", f"{story_id}|_orchestrator|Classifying story type...")
+    classifier = StoryTypeClassifier()
+    try:
+        success = classifier.develop(story_id)
+        publish_event("story:progress", f"{story_id}|story_type_classifier|{'completed' if success else 'failed'}")
+    except Exception as e:
+        logger.exception("Type classifier failed: %s", e)
+        publish_event("story:progress", f"{story_id}|story_type_classifier|error: {e}")
+
+    publish_event("story:complete", f"{story_id}|1")
+    logger.info("Story created: %s (%s)", story_id, title)
+    return story_id
+
+
+def develop_story(seed_id: Optional[str] = None, title: str = "",
+                  premise: Optional[str] = None) -> Optional[str]:
+    story_id = create_story(seed_id, title, premise)
+    if not story_id:
+        return None
+    run_full_pipeline(story_id)
+    return story_id
+
+
+def run_full_pipeline(story_id: str) -> bool:
+    row = execute(
+        "SELECT seed_id FROM stories WHERE id = %s", (story_id,), fetch=True,
+    )
+    if not row:
+        logger.error("Story %s not found", story_id)
+        return False
+
+    seed_id = row[0][0]
+    if seed_id:
+        ensure_prerequisites(seed_id)
+
     total = len(STORY_STEPS)
     for idx, step_class in enumerate(STORY_STEPS):
         step = step_class()
@@ -86,18 +121,15 @@ def develop_story(seed_id: Optional[str] = None, title: str = "",
         logger.info("Running story step %d/%d: %s", idx + 1, total, step_name)
         try:
             success = step.develop(story_id)
-            if success:
-                publish_event("story:progress", f"{story_id}|{step_name}|completed")
-            else:
-                publish_event("story:progress", f"{story_id}|{step_name}|failed")
+            publish_event("story:progress", f"{story_id}|{step_name}|{'completed' if success else 'failed'}")
         except Exception as e:
             logger.exception("Story step %s failed: %s", step_name, e)
             publish_event("story:progress", f"{story_id}|{step_name}|error: {e}")
 
     execute("UPDATE stories SET status = 'outline' WHERE id = %s", (story_id,))
     publish_event("story:complete", f"{story_id}|{total}")
-    logger.info("Story development complete: %s (%s)", story_id, title)
-    return story_id
+    logger.info("Full pipeline complete: %s", story_id)
+    return True
 
 
 def run_story_step(story_id: str, step_name: str) -> bool:

@@ -60,7 +60,14 @@
     "view_story": "Ver Historia",
     "created": "Creada",
     "story_error": "Error al cargar la historia",
-    "not_found": "Historia no encontrada"
+    "not_found": "Historia no encontrada",
+    "tab_history": "Historia",
+    "tab_analysis": "Análisis",
+    "tab_creative": "Creativo",
+    "tab_publishing": "Publicación",
+    "locked_step_tooltip": "Completa {step} primero",
+    "no_enrichments": "No hay datos de enriquecimiento. Las historias creadas desde cero no tienen enriquecimientos de semilla.",
+    "step_order_error": "El paso anterior no está completado"
   },
   "seed": {
     "title": "Detalle de Semilla",
@@ -95,7 +102,7 @@
     "view_story": "Ver Historia",
     "develop": "Desarrollar Historia",
     "develop_story": "Desarrollar Historia",
-    "develop_hint": "Ejecuta el pipeline completo de historias en esta semilla",
+    "develop_hint": "Crea una historia desde esta semilla. Puedes desarrollar cada paso individualmente.",
     "develop_error": "Error al iniciar el desarrollo de la historia",
     "generating_with_time": "Generando... ({elapsed}s)",
     "generate_with_ai": "Generar con IA",

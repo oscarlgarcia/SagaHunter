@@ -66,9 +66,9 @@ export async function POST(req: NextRequest) {
 
     let code: string;
     if (seedId) {
-      code = `from agents.story.orchestrator import develop_story; develop_story(seed_id=${quote(seedId)}, title=${quote(title)}, premise=${quote(premise || '')})`;
+      code = `from agents.story.orchestrator import create_story; create_story(seed_id=${quote(seedId)}, title=${quote(title)}, premise=${quote(premise || '')})`;
     } else {
-      code = `from agents.story.orchestrator import develop_story; develop_story(title=${quote(title)}, premise=${quote(premise || '')})`;
+      code = `from agents.story.orchestrator import create_story; create_story(title=${quote(title)}, premise=${quote(premise || '')})`;
     }
 
     const output = execSync(

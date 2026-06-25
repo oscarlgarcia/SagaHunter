@@ -60,7 +60,14 @@
     "view_story": "View Story",
     "created": "Created",
     "story_error": "Failed to load story",
-    "not_found": "Story not found"
+    "not_found": "Story not found",
+    "tab_history": "Story",
+    "tab_analysis": "Analysis",
+    "tab_creative": "Creative",
+    "tab_publishing": "Publishing",
+    "locked_step_tooltip": "Complete {step} first",
+    "no_enrichments": "No enrichment data available. Stories created from scratch don't have seed enrichments.",
+    "step_order_error": "Previous step not completed"
   },
   "seed": {
     "title": "Seed Detail",
@@ -95,7 +102,7 @@
     "view_story": "View Story",
     "develop": "Develop Story",
     "develop_story": "Develop Story",
-    "develop_hint": "Run the full story pipeline on this seed",
+    "develop_hint": "Create a story from this seed. You can develop each step individually.",
     "develop_error": "Failed to start story development",
     "generating_with_time": "Generating... ({elapsed}s)",
     "generate_with_ai": "Generate with AI",

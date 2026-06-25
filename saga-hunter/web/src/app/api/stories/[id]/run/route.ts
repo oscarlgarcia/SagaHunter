@@ -9,7 +9,7 @@ export async function POST(
     const quote = (s: string) => `'${s.replace(/'/g, "'\\''")}'`;
 
     const output = execSync(
-      `python3 -c "import sys; sys.path.insert(0, '/app/python'); from agents.story.orchestrator import develop_story; develop_story(seed_id=${quote(params.id)})"`,
+      `python3 -c "import sys; sys.path.insert(0, '/app/python'); from agents.story.orchestrator import run_full_pipeline; run_full_pipeline(${quote(params.id)})"`,
       { cwd: "/app/python", timeout: 300000, encoding: "utf-8" }
     );
 
