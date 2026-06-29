@@ -507,6 +507,128 @@ export default function EnrichmentContent({ agentName, data }: { agentName: stri
     );
   }
 
+  if (agentName === "story_critique" && data.coherence_score !== undefined) {
+    const grades: Record<string, string> = { A: "text-green-600", B: "text-blue-600", C: "text-amber-600", D: "text-orange-600", F: "text-red-600" };
+    const gradeColor = grades[data.overall_grade] || "text-gray-600";
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { label: te("story_critique.coherence"), value: data.coherence_score },
+            { label: te("story_critique.pacing"), value: data.pacing_score },
+            { label: te("story_critique.emotional_arc"), value: data.emotional_arc_score },
+            { label: te("story_critique.completeness"), value: data.completeness_score },
+          ].map((m) => (
+            <div key={m.label} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-medium text-gray-500">{m.label}</span>
+                <span className="text-sm font-bold text-gray-700">{m.value}%</span>
+              </div>
+              <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                <div className="h-full bg-saga-500 rounded-full transition-all" style={{ width: `${m.value}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-gray-500">{te("story_critique.overall_grade")}</span>
+          <span className={`text-2xl font-bold ${gradeColor}`}>{data.overall_grade}</span>
+        </div>
+        {data.strengths?.length > 0 && (
+          <div>
+            <h5 className="text-xs font-semibold text-gray-500 uppercase mb-2">{te("story_critique.strengths")}</h5>
+            <ul className="space-y-1">
+              {data.strengths.map((s: string, i: number) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                  <span className="text-green-500 mt-0.5 shrink-0">+</span>
+                  {s}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {data.weaknesses?.length > 0 && (
+          <div>
+            <h5 className="text-xs font-semibold text-gray-500 uppercase mb-2">{te("story_critique.weaknesses")}</h5>
+            <ul className="space-y-1">
+              {data.weaknesses.map((s: string, i: number) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                  <span className="text-red-500 mt-0.5 shrink-0">&minus;</span>
+                  {s}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {data.recommendations?.length > 0 && (
+          <div>
+            <h5 className="text-xs font-semibold text-gray-500 uppercase mb-2">{te("story_critique.recommendations")}</h5>
+            <ul className="space-y-1">
+              {data.recommendations.map((s: string, i: number) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                  <span className="text-saga-500 mt-0.5 shrink-0">&rarr;</span>
+                  {s}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {data.themes?.length > 0 && (
+          <div>
+            <h5 className="text-xs font-semibold text-gray-500 uppercase mb-2">{te("story_critique.themes")}</h5>
+            <div className="flex flex-wrap gap-2">
+              {data.themes.map((t: string, i: number) => (
+                <span key={i} className="px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 text-xs font-medium">{t}</span>
+              ))}
+            </div>
+          </div>
+        )}
+        {data.target_audience && (
+          <p className="text-xs text-gray-500 italic">{te("story_critique.target_audience")}: {data.target_audience}</p>
+        )}
+      </div>
+    );
+  }
+
+  if (agentName === "auto_summary" && data.summary) {
+    return (
+      <div className="space-y-4">
+        <div className="bg-gradient-to-br from-saga-50 to-blue-50 rounded-xl border border-saga-200 p-5">
+          <p className="text-sm text-gray-800 leading-relaxed">{data.summary}</p>
+        </div>
+        {data.logline && (
+          <div className="border-l-4 border-saga-400 pl-4 py-2 bg-gray-50 rounded-r-lg">
+            <p className="text-xs font-semibold text-gray-500 uppercase mb-1">{te("auto_summary.logline")}</p>
+            <p className="text-sm text-gray-700 italic">&ldquo;{data.logline}&rdquo;</p>
+          </div>
+        )}
+        {data.key_themes?.length > 0 && (
+          <div>
+            <h5 className="text-xs font-semibold text-gray-500 uppercase mb-2">{te("auto_summary.key_themes")}</h5>
+            <div className="flex flex-wrap gap-2">
+              {data.key_themes.map((t: string, i: number) => (
+                <span key={i} className="px-2.5 py-1 rounded-full bg-saga-100 text-saga-700 text-xs font-medium">{t}</span>
+              ))}
+            </div>
+          </div>
+        )}
+        {data.narrative_significance && (
+          <p className="text-xs text-gray-500 italic">{data.narrative_significance}</p>
+        )}
+        {data.comparable_titles?.length > 0 && (
+          <div>
+            <h5 className="text-xs font-semibold text-gray-500 uppercase mb-2">{te("auto_summary.comparable")}</h5>
+            <div className="flex flex-wrap gap-2">
+              {data.comparable_titles.map((t: string, i: number) => (
+                <span key={i} className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-medium">{t}</span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <pre className="text-sm text-gray-600 whitespace-pre-wrap font-sans">
       {JSON.stringify(data, null, 2)}

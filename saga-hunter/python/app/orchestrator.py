@@ -24,6 +24,8 @@ from agents.creative.voice_tone_tuner import VoiceToneTuner
 from agents.publishing.blurb_generator import BlurbGenerator
 from agents.publishing.series_connector import SeriesConnector
 from agents.publishing.plot_hole_detector import PlotHoleDetector
+from agents.publishing.story_critique import StoryCritique
+from agents.publishing.auto_summary import AutoSummary
 
 logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
@@ -45,6 +47,8 @@ AGENT_REGISTRY = {
     "blurb_generator": BlurbGenerator,
     "series_connector": SeriesConnector,
     "plot_hole_detector": PlotHoleDetector,
+    "story_critique": StoryCritique,
+    "auto_summary": AutoSummary,
 }
 
 
@@ -67,7 +71,7 @@ def ensure_agent_configs():
 MINING_AGENTS = {"news_aggregator", "curiosity_engine", "trend_hunter"}
 ANALYSIS_AGENTS = {"angle_finder", "story_structurer", "genre_classifier"}
 CREATIVE_AGENTS = {"what_if_generator", "world_builder", "character_harvester", "voice_tuner"}
-PUBLISHING_AGENTS = {"blurb_generator", "series_connector", "plot_hole_detector"}
+PUBLISHING_AGENTS = {"blurb_generator", "series_connector", "plot_hole_detector", "story_critique", "auto_summary"}
 
 
 def _log_run(agent_name: str, status: str, seeds_created: int, message: str = None):

@@ -1,6 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { ok, notFound, safeParse, handleError } from "@/lib/api-utils";
+import { logger } from "@/lib/logger";
 
 const ChapterSchema = z.object({
   chapterNumber: z.number().int().positive(),
@@ -16,17 +18,20 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const body = await req.json();
-  const parsed = ChapterSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  try {
+    const { data, error } = await safeParse(req, ChapterSchema);
+    if (error) return error;
+
+    const story = await prisma.story.findUnique({ where: { id: params.id } });
+    if (!story) return notFound("Story not found");
+
+    const chapter = await prisma.storyChapter.create({
+      data: { ...data, storyId: params.id },
+    });
+
+    logger.info("Chapter created", { chapterId: chapter.id, storyId: params.id });
+    return ok(chapter);
+  } catch (e) {
+    return handleError(e, "Failed to create chapter");
   }
-
-  const story = await prisma.story.findUnique({ where: { id: params.id } });
-  if (!story) return NextResponse.json({ error: "Story not found" }, { status: 404 });
-
-  const chapter = await prisma.storyChapter.create({
-    data: { ...parsed.data, storyId: params.id },
-  });
-  return NextResponse.json(chapter);
 }

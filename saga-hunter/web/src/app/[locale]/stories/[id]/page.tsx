@@ -1,6 +1,7 @@
 "use client";
 
 import { lazy, Suspense, useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
@@ -59,8 +60,8 @@ const STEP_ICONS: Record<string, any> = {
   chapter_outliner: Layout, character_deepener: Users, location_builder: MapPin,
 };
 
-const ANALYSIS_AGENTS = ["angle_finder", "story_structurer", "genre_classifier", "find_the_angle", "story_structure", "kindle_pre_check"];
-const CREATIVE_AGENTS = ["what_if_generator", "what_if", "world_builder", "character_harvester", "voice_tuner", "world_builder"];
+const ANALYSIS_AGENTS = ["angle_finder", "story_structurer", "genre_classifier"];
+const CREATIVE_AGENTS = ["what_if_generator", "world_builder", "character_harvester", "voice_tuner"];
 const PUBLISHING_AGENTS = ["blurb_generator", "series_connector", "plot_hole_detector", "story_critique", "auto_summary"];
 
 function isStepDone(step: string, story: Story): boolean {
@@ -179,7 +180,7 @@ export default function StoryDetailPage() {
     enrichments.filter((e: Enrichment) => agents.includes(e.agentName));
 
   return (
-    <div>
+    <>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-4">
           <button onClick={() => router.push("/stories")} className="text-gray-400 hover:text-gray-600">
@@ -322,7 +323,8 @@ export default function StoryDetailPage() {
                 ) : (
                   <div className="divide-y divide-gray-50">
                     {story.chapters.map((ch) => (
-                      <div key={ch.id} className="flex items-center gap-3 py-2.5 text-sm">
+                      <Link key={ch.id} href={`/stories/${id}/chapter/${ch.id}`}
+                        className="flex items-center gap-3 py-2.5 text-sm hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors">
                         <span className="text-xs font-mono text-gray-400 w-6">#{ch.chapterNumber}</span>
                         <span className="flex-1 font-medium text-gray-800">{ch.title}</span>
                         {ch.synopsis && <span className="text-xs text-gray-400 truncate max-w-[200px]">{ch.synopsis}</span>}
@@ -331,7 +333,7 @@ export default function StoryDetailPage() {
                           ch.status === "drafted" ? "bg-green-100 text-green-700" :
                           ch.status === "revised" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"
                         )}>{ch.status}</Badge>
-                      </div>
+                      </Link>
                     ))}
                   </div>
                 )}
@@ -417,6 +419,31 @@ export default function StoryDetailPage() {
                         {ch.arc && <p className="text-xs text-gray-500 mt-1.5">{ch.arc}</p>}
                       </div>
                     ))}
+                </div>
+              )}
+
+              <div className="bg-white rounded-xl border border-gray-200 p-5">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                  <Layout className="w-4 h-4 inline mr-1.5 text-gray-400" />
+                  Arcs ({story.arcs.length})
+                </h3>
+                {story.arcs.length === 0 ? (
+                  <p className="text-sm text-gray-400">No arcs defined.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {story.arcs.map((arc) => (
+                      <div key={arc.id} className="bg-gray-50 rounded-lg p-3">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm text-gray-800">{arc.name}</span>
+                          <span className="text-xs text-gray-400">
+                            ({(arc as any).chapters?.length || 0} chapters)
+                          </span>
+                        </div>
+                        {arc.description && (
+                          <p className="text-xs text-gray-500 mt-1">{arc.description}</p>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -460,6 +487,7 @@ export default function StoryDetailPage() {
           )}
         </Suspense>
       )}
-    </div>
+
+    </>
   );
 }

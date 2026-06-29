@@ -150,16 +150,17 @@ class BaseAgent(ABC):
 
     def _save_seed(self, title: str, source_type: str, source_url: str,
                    source_name: str, raw_text: str, language: str,
-                   narrative_score: int) -> Optional[int]:
+                   narrative_score: int) -> Optional[str]:
+        seed_id = str(uuid.uuid4())
         execute(
             """INSERT INTO seeds (id, title, source_type, source_url, source_name, raw_text,
                                   language, narrative_score, status, discovered_at)
                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'discovered', NOW())
                ON CONFLICT (source_url) DO NOTHING""",
-            (str(uuid.uuid4()), title, source_type, source_url, source_name, raw_text, language, narrative_score),
+            (seed_id, title, source_type, source_url, source_name, raw_text, language, narrative_score),
         )
         publish_event("seeds:new", f"New seed discovered: {title}")
-        return None
+        return seed_id
 
     def _seed_exists(self, source_url: str) -> bool:
         rows = execute(

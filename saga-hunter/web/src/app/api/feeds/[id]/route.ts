@@ -1,6 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { ok, badRequest, notFound, safeParse, handleError } from "@/lib/api-utils";
+import { logger } from "@/lib/logger";
 
 const FeedUpdate = z.object({
   name: z.string().min(1).max(200).optional(),
@@ -17,19 +19,28 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const body = await req.json();
-  const parsed = FeedUpdate.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  try {
+    const { data, error } = await safeParse(req, FeedUpdate);
+    if (error) return error;
+    const feed = await prisma.feed.update({ where: { id: params.id }, data });
+    logger.info("Feed updated", { id: feed.id });
+    return ok(feed);
+  } catch (error) {
+    return handleError(error, "Failed to update feed");
   }
-  const feed = await prisma.feed.update({ where: { id: params.id }, data: parsed.data });
-  return NextResponse.json(feed);
 }
 
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  await prisma.feed.delete({ where: { id: params.id } });
-  return NextResponse.json({ ok: true });
+  try {
+    const feed = await prisma.feed.findUnique({ where: { id: params.id } });
+    if (!feed) return notFound("Feed not found");
+    await prisma.feed.delete({ where: { id: params.id } });
+    logger.info("Feed deleted", { id: params.id });
+    return ok({ ok: true });
+  } catch (error) {
+    return handleError(error, "Failed to delete feed");
+  }
 }

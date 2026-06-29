@@ -147,6 +147,7 @@ model StoryChapter {
   synopsis        String?
   wordCountTarget Int?     @map("word_count_target")
   scenes          Json?
+  content         String?
   status          String   @default("outline")
   arcId           String?  @map("arc_id")
 
@@ -199,4 +200,17 @@ model StoryArc {
   chapters StoryChapter[]
 
   @@map("story_arcs")
+}
+
+model PushSubscription {
+  id             String   @id @default(uuid())
+  endpoint       String   @unique
+  p256dh         String?
+  auth           String?
+  expirationTime Int?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@index([endpoint])
+  @@map("push_subscriptions")
 }

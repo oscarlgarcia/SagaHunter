@@ -12,6 +12,8 @@ export const seedsRouter = t.router({
         status: z.string().optional(),
         search: z.string().optional(),
         sortBy: z.enum(["score", "date"]).default("date"),
+        limit: z.number().int().positive().default(20),
+        cursor: z.string().optional(),
       })
     )
     .query(async ({ input }) => {
@@ -30,11 +32,21 @@ export const seedsRouter = t.router({
           ? { narrativeScore: { sort: "desc", nulls: "last" } }
           : { discoveredAt: "desc" };
 
-      return prisma.seed.findMany({
+      const seeds = await prisma.seed.findMany({
         where,
         orderBy,
-        take: 50,
+        take: input.limit + 1,
+        ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
       });
+
+      const hasMore = seeds.length > input.limit;
+      if (hasMore) seeds.pop();
+
+      return {
+        seeds,
+        nextCursor: hasMore ? seeds[seeds.length - 1].id : null,
+        hasMore,
+      };
     }),
 
   byId: publicProcedure
@@ -53,5 +65,13 @@ export const seedsRouter = t.router({
         where: { id: input.id },
         data: { status: input.status },
       });
+    }),
+
+  deleteMany: publicProcedure
+    .input(z.object({ ids: z.array(z.string()) }))
+    .mutation(async ({ input }) => {
+      await prisma.enrichment.deleteMany({ where: { seedId: { in: input.ids } } });
+      await prisma.seed.deleteMany({ where: { id: { in: input.ids } } });
+      return { deleted: input.ids.length };
     }),
 });

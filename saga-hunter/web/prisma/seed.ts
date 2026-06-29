@@ -36,7 +36,7 @@ const AGENT_CONFIGS = [
   { agentName: "series_connector", enabled: true, mode: "auto", schedule: "*/60 * * * *", languages: ["en"] },
   { agentName: "plot_hole_detector", enabled: true, mode: "auto", schedule: "*/30 * * * *", languages: ["en", "es", "fr", "it"] },
   { agentName: "story_critique", enabled: true, mode: "auto", schedule: "*/30 * * * *", languages: ["en", "es", "fr", "it"] },
-  { agentName: "auto_summary", enabled: true, mode: "auto", schedule: "*/30 * * * *", languages: ["en", "es", "fr", "it"] },
+  { agentName: "auto_summary", enabled: true, mode: "auto", schedule: "*/45 * * * *", languages: ["en", "es", "fr", "it"] },
 ];
 
 async function main() {

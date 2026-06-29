@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useToast } from "@/components/ui/Toast";
 import { useTranslations } from "next-intl";
 import { Newspaper, BookOpen, Flame, Search, Layout, Tag, Shuffle, Globe, Users, PenTool, BookText, GitBranch, Bug, Radio, Sparkles, Send, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -62,6 +63,7 @@ const STAGE_COLORS: Record<string, { border: string; bg: string; text: string; d
 export default function AgentsPage() {
   const t = useTranslations("agents");
   const ts = useTranslations("agents.stages");
+  const { addToast } = useToast();
   const [agents, setAgents] = useState<AgentConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,10 +71,8 @@ export default function AgentsPage() {
   const [expandedAgent, setExpandedAgent] = useState<string | null>(null);
   const [promptModal, setPromptModal] = useState<{ agentName: string; prompt: string; defaultPrompt: string; isCustom: boolean } | null>(null);
   const [savingPrompt, setSavingPrompt] = useState(false);
-  const [promptToast, setPromptToast] = useState<string | null>(null);
   const [timingModal, setTimingModal] = useState<{ agentName: string; intervalMinutes: number; timeoutSeconds: number } | null>(null);
   const [savingTiming, setSavingTiming] = useState(false);
-  const [timingToast, setTimingToast] = useState<string | null>(null);
 
   const fetchAgents = async () => {
     try {
@@ -97,18 +97,6 @@ export default function AgentsPage() {
   };
 
   useEffect(() => { fetchAgents(); }, []);
-
-  useEffect(() => {
-    if (!promptToast) return;
-    const t = setTimeout(() => setPromptToast(null), 4000);
-    return () => clearTimeout(t);
-  }, [promptToast]);
-
-  useEffect(() => {
-    if (!timingToast) return;
-    const t = setTimeout(() => setTimingToast(null), 4000);
-    return () => clearTimeout(t);
-  }, [timingToast]);
 
   const openPromptModal = async (agentName: string) => {
     try {
@@ -135,14 +123,14 @@ export default function AgentsPage() {
         body: JSON.stringify({ prompt: promptModal.prompt }),
       });
       if (r.ok) {
-        setPromptToast("Prompt saved");
+        addToast("Prompt saved");
         setPromptModal(null);
         fetchAgents();
       } else {
-        setPromptToast("Failed to save prompt");
+        addToast("Failed to save prompt", "error");
       }
     } catch {
-      setPromptToast("Failed to save prompt");
+      addToast("Failed to save prompt", "error");
     } finally {
       setSavingPrompt(false);
     }
@@ -170,14 +158,14 @@ export default function AgentsPage() {
         }),
       });
       if (r.ok) {
-        setTimingToast("Timing saved");
+        addToast("Timing saved");
         setTimingModal(null);
         fetchAgents();
       } else {
-        setTimingToast("Failed to save timing");
+        addToast("Failed to save timing", "error");
       }
     } catch {
-      setTimingToast("Failed to save timing");
+      addToast("Failed to save timing", "error");
     } finally {
       setSavingTiming(false);
     }
@@ -495,22 +483,6 @@ export default function AgentsPage() {
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {promptToast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium bg-green-600 text-white">
-          <span>✓</span>
-          <span>{promptToast}</span>
-          <button onClick={() => setPromptToast(null)} className="ml-2 opacity-70 hover:opacity-100">✕</button>
-        </div>
-      )}
-
-      {timingToast && (
-        <div className="fixed bottom-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium bg-green-600 text-white">
-          <span>✓</span>
-          <span>{timingToast}</span>
-          <button onClick={() => setTimingToast(null)} className="ml-2 opacity-70 hover:opacity-100">✕</button>
         </div>
       )}
     </div>

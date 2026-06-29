@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { memo, useEffect, useState, useRef, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { Activity, Radio, Search, Sparkles, Send, Play, Trash2, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -56,9 +56,49 @@ const STATUS_CONFIG = {
 
 let eventCounter = 0;
 
+const getStage = (agentName: string) => AGENT_STAGE[agentName] || "mining";
+const getStageConfig = (agentName: string) => STAGE_CONFIG[getStage(agentName)];
+
+const EventItem = memo(function EventItem({ evt }: { evt: LiveEvent }) {
+  const t = useTranslations();
+  const stage = getStageConfig(evt.agentName);
+  const statusCfg = STATUS_CONFIG[evt.status];
+  return (
+    <div className="flex items-center gap-3 px-5 py-2.5 hover:bg-gray-50 text-sm">
+      <span className={cn("w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0", statusCfg.bg, statusCfg.text)}>
+        {statusCfg.icon}
+      </span>
+      <span className="text-xs text-gray-400 font-mono w-16 shrink-0">
+        {evt.timestamp.toLocaleTimeString()}
+      </span>
+      <span className="capitalize text-gray-700 font-medium min-w-[120px]">
+        {evt.agentName.replace(/_/g, " ")}
+      </span>
+      <span className={cn("text-xs font-medium px-1.5 py-0.5 rounded", stage.text, stage.bg)}>
+        {stage.icon}
+        <span className="ml-1">{t(stage.label)}</span>
+      </span>
+      <span className={cn("text-xs font-medium capitalize", statusCfg.text)}>
+        {t(`monitor.${evt.status}`)}
+      </span>
+      {evt.seedsCreated !== undefined && evt.seedsCreated > 0 && (
+        <Badge className="bg-saga-100 text-saga-700">
+          +{evt.seedsCreated} {t("monitor.seeds")}
+        </Badge>
+      )}
+      {evt.duration !== undefined && (
+        <span className="text-xs text-gray-400 ml-auto shrink-0">
+          {evt.duration}{t("monitor.seconds")}
+        </span>
+      )}
+    </div>
+  );
+});
+
 export default function MonitorPage() {
   const t = useTranslations();
   const { events, connected } = useEventStream();
+  const [initialLoading, setInitialLoading] = useState(true);
   const [running, setRunning] = useState<Map<string, RunningAgent>>(new Map());
   const [feed, setFeed] = useState<LiveEvent[]>([]);
   const [stats, setStats] = useState<PipelineStats>({ started: 0, success: 0, fail: 0, crash: 0, total: 0 });
@@ -89,7 +129,7 @@ export default function MonitorPage() {
         });
 
         const id = `evt-${++eventCounter}`;
-        setFeed((prev) => [{ id, agentName, status: "started", description, timestamp }, ...prev].slice(0, 50));
+        setFeed((prev) => [{ id, agentName, status: "started" as const, description, timestamp }, ...prev].slice(0, 50));
         setStats((prev) => ({ ...prev, started: prev.started + 1, total: prev.total + 1 }));
         setEventCount((c) => c + 1);
       }
@@ -131,6 +171,7 @@ export default function MonitorPage() {
         setEventCount((c) => c + 1);
       }
     });
+    if (events.length > 0 && initialLoading) setInitialLoading(false);
   }, [events]);
 
   const clearFeed = useCallback(() => {
@@ -145,8 +186,40 @@ export default function MonitorPage() {
     return `${Math.floor(secs / 60)}m ${secs % 60}s`;
   };
 
-  const getStage = (agentName: string) => AGENT_STAGE[agentName] || "mining";
-  const getStageConfig = (agentName: string) => STAGE_CONFIG[getStage(agentName)];
+  if (initialLoading && !connected) {
+    return (
+      <div>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{t("monitor.title")}</h1>
+            <p className="text-sm text-gray-500 mt-1">{t("monitor.subtitle")}</p>
+          </div>
+        </div>
+        <div className="space-y-6">
+          <div className="bg-white rounded-xl border border-gray-200 p-5 animate-pulse">
+            <div className="h-5 bg-gray-200 rounded w-1/4 mb-4" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {[1,2].map(i => (
+                <div key={i} className="h-24 bg-gray-100 rounded-lg" />
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-5 animate-pulse">
+              <div className="h-5 bg-gray-200 rounded w-1/4 mb-4" />
+              <div className="space-y-3">
+                {[1,2,3].map(i => <div key={i} className="h-12 bg-gray-100 rounded" />)}
+              </div>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-5 animate-pulse">
+              <div className="h-5 bg-gray-200 rounded w-1/3 mb-4" />
+              <div className="h-24 bg-gray-100 rounded" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -231,40 +304,9 @@ export default function MonitorPage() {
               <div className="p-8 text-center text-sm text-gray-400">{t("monitor.no_events")}</div>
             ) : (
               <div className="divide-y divide-gray-50">
-                {feed.map((evt) => {
-                  const stage = getStageConfig(evt.agentName);
-                  const statusCfg = STATUS_CONFIG[evt.status];
-                  return (
-                    <div key={evt.id} className="flex items-center gap-3 px-5 py-2.5 hover:bg-gray-50 text-sm">
-                      <span className={cn("w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0", statusCfg.bg, statusCfg.text)}>
-                        {statusCfg.icon}
-                      </span>
-                      <span className="text-xs text-gray-400 font-mono w-16 shrink-0">
-                        {evt.timestamp.toLocaleTimeString()}
-                      </span>
-                      <span className="capitalize text-gray-700 font-medium min-w-[120px]">
-                        {evt.agentName.replace(/_/g, " ")}
-                      </span>
-                      <span className={cn("text-xs font-medium px-1.5 py-0.5 rounded", stage.text, stage.bg)}>
-                        {stage.icon}
-                        <span className="ml-1">{t(stage.label)}</span>
-                      </span>
-                      <span className={cn("text-xs font-medium capitalize", statusCfg.text)}>
-                        {t(`monitor.${evt.status}`)}
-                      </span>
-                      {evt.seedsCreated !== undefined && evt.seedsCreated > 0 && (
-                        <Badge className="bg-saga-100 text-saga-700">
-                          +{evt.seedsCreated} {t("monitor.seeds")}
-                        </Badge>
-                      )}
-                      {evt.duration !== undefined && (
-                        <span className="text-xs text-gray-400 ml-auto shrink-0">
-                          {evt.duration}{t("monitor.seconds")}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
+                {feed.map((evt) => (
+                  <EventItem key={evt.id} evt={evt} />
+                ))}
               </div>
             )}
           </div>

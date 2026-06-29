@@ -67,12 +67,28 @@
     "tab_publishing": "Publishing",
     "locked_step_tooltip": "Complete {step} first",
     "no_enrichments": "No enrichment data available. Stories created from scratch don't have seed enrichments.",
-    "step_order_error": "Previous step not completed"
+    "step_order_error": "Previous step not completed",
+    "back_to_story": "Back to Story",
+    "chapter_editor": "Editor",
+    "chapter_settings": "Settings",
+    "chapter_scenes": "Scenes",
+    "chapter_synopsis": "Synopsis",
+    "chapter_word_target": "Word Count Target",
+    "chapter_status": "Status",
+    "add_scene": "Add Scene",
+    "generate_synopsis": "Regenerate with AI",
+    "generate_scenes": "Generate Scenes with AI",
+    "prev_chapter": "Previous Chapter",
+    "next_chapter": "Next Chapter",
+    "save": "Save",
+    "saved": "Saved",
+    "generating": "Generating..."
   },
   "seed": {
     "title": "Seed Detail",
     "export": "Export",
     "export_tooltip": "Export this seed as JSON",
+    "export_error": "Failed to export seed",
     "raw": "Original Content",
     "raw_tab": "Raw Text",
     "analysis": "Analysis",
@@ -123,7 +139,9 @@
       "kindle_pre_check": "Kindle Pre-Check",
       "blurb_generator": "Blurb Generator",
       "series_connector": "Series Connector",
-      "plot_hole_detector": "Plot Hole Detector"
+      "plot_hole_detector": "Plot Hole Detector",
+      "story_critique": "Story Critique",
+      "auto_summary": "Auto Summary"
     },
     "enrichment": {
       "plot_hole_detector": {
@@ -145,6 +163,23 @@
         "genre": "Genre:",
         "best_for": "Best for:",
         "words": "{count} words"
+      },
+      "story_critique": {
+        "coherence": "Coherence",
+        "pacing": "Pacing",
+        "emotional_arc": "Emotional Arc",
+        "completeness": "Completeness",
+        "overall_grade": "Overall Grade",
+        "strengths": "Strengths",
+        "weaknesses": "Weaknesses",
+        "recommendations": "Recommendations",
+        "themes": "Themes",
+        "target_audience": "Target Audience"
+      },
+      "auto_summary": {
+        "logline": "Logline",
+        "key_themes": "Key Themes",
+        "comparable": "Comparable Titles"
       },
       "voice_tuner": {
         "pov": "POV",

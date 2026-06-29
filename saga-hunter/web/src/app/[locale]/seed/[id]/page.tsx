@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { cn, formatScore, scoreColor, statusColor } from "@/lib/utils";
 import { SourceIcon } from "@/components/ui/SourceIcon";
 import { Sparkles, Loader2 } from "lucide-react";
+import { useToast } from "@/components/ui/Toast";
 import type { Enrichment } from "@/components/seed/EnrichmentContent";
 
 const EnrichmentSection = lazy(() => import("@/components/seed/EnrichmentSection"));
@@ -57,13 +58,13 @@ export default function SeedDetailPage() {
   const params = useParams();
   const id = params.id as string;
   const router = useRouter();
+  const { addToast } = useToast();
   const [seed, setSeed] = useState<Seed | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>("raw");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [developing, setDeveloping] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   useEffect(() => {
     fetch(`/api/seeds/${id}`)
@@ -73,12 +74,6 @@ export default function SeedDetailPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 5000);
-    return () => clearTimeout(t);
-  }, [toast]);
-
   const handleDelete = useCallback(async () => {
     setDeleting(true);
     try {
@@ -86,16 +81,16 @@ export default function SeedDetailPage() {
       if (r.ok) {
         router.push("/");
       } else {
-        setToast({ message: t("delete_error"), type: "error" });
+        addToast(t("delete_error"), "error");
         setShowDeleteModal(false);
       }
     } catch {
-      setToast({ message: t("delete_error"), type: "error" });
+      addToast(t("delete_error"), "error");
       setShowDeleteModal(false);
     } finally {
       setDeleting(false);
     }
-  }, [id, router]);
+  }, [id, router, addToast]);
 
   const handleDevelopStory = useCallback(async () => {
     if (!seed) return;
@@ -109,16 +104,16 @@ export default function SeedDetailPage() {
       if (r.ok) {
         const data = await r.json();
         if (data.story) router.push(`/stories/${data.story.id}`);
-        else setToast({ message: t("develop_error"), type: "error" });
+        else addToast(t("develop_error"), "error");
       } else {
-        setToast({ message: t("develop_error"), type: "error" });
+        addToast(t("develop_error"), "error");
       }
     } catch {
-      setToast({ message: t("develop_error"), type: "error" });
+      addToast(t("develop_error"), "error");
     } finally {
       setDeveloping(false);
     }
-  }, [seed, router]);
+  }, [seed, router, addToast]);
 
   if (loading) {
     return (
@@ -142,9 +137,9 @@ export default function SeedDetailPage() {
   const enrichments = seed.enrichments || [];
   const tabs = [
     { key: "raw", label: t("raw_tab"), badge: 0 },
-    { key: "analysis", label: t("analysis"), badge: enrichments.filter(e => ["angle_finder", "story_structurer", "genre_classifier", "find_the_angle", "story_structure", "kindle_pre_check"].includes(e.agentName)).length },
-    { key: "creative", label: t("creative"), badge: enrichments.filter(e => ["what_if_generator", "what_if", "world_builder", "character_harvester", "voice_tuner", "world_builder"].includes(e.agentName)).length },
-    { key: "publishing", label: t("publishing"), badge: enrichments.filter(e => ["blurb_generator", "series_connector", "plot_hole_detector", "story_critique", "auto_summary"].includes(e.agentName)).length },
+    { key: "analysis", label: t("analysis"), badge: enrichments.filter(e => ["angle_finder", "story_structurer", "genre_classifier"].includes(e.agentName)).length },
+    { key: "creative", label: t("creative"), badge: enrichments.filter(e => ["what_if_generator", "world_builder", "character_harvester", "voice_tuner"].includes(e.agentName)).length },
+    { key: "publishing", label: t("publishing"), badge: enrichments.filter(e => ["blurb_generator", "series_connector", "plot_hole_detector"].includes(e.agentName)).length },
   ];
 
   const getEnrichmentsByCategory = (agents: string[]) =>
@@ -172,18 +167,21 @@ export default function SeedDetailPage() {
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <button
-            onClick={() => {
-              fetch(`/api/seeds/${seed.id}/export`)
-                .then((r) => r.json())
-                .then((data) => {
-                  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `${seed.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.json`;
-                  a.click();
-                  URL.revokeObjectURL(url);
-                });
+            onClick={async () => {
+              try {
+                const r = await fetch(`/api/seeds/${seed.id}/export`);
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                const data = await r.json();
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `${seed.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+              } catch {
+                addToast(t("export_error"), "error");
+              }
             }}
             className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
             title={t("export_tooltip")}
@@ -243,19 +241,19 @@ export default function SeedDetailPage() {
 
           {activeTab === "analysis" && (
             <Suspense fallback={<EnrichmentFallback />}>
-              <EnrichmentSection enrichments={getEnrichmentsByCategory(["angle_finder", "story_structurer", "genre_classifier", "find_the_angle", "story_structure", "kindle_pre_check"])} />
+              <EnrichmentSection enrichments={getEnrichmentsByCategory(["angle_finder", "story_structurer", "genre_classifier"])} />
             </Suspense>
           )}
 
           {activeTab === "creative" && (
             <Suspense fallback={<EnrichmentFallback />}>
-              <EnrichmentSection enrichments={getEnrichmentsByCategory(["what_if_generator", "what_if", "world_builder", "character_harvester", "voice_tuner", "world_builder"])} />
+              <EnrichmentSection enrichments={getEnrichmentsByCategory(["what_if_generator", "world_builder", "character_harvester", "voice_tuner"])} />
             </Suspense>
           )}
 
           {activeTab === "publishing" && (
             <Suspense fallback={<EnrichmentFallback />}>
-              <EnrichmentSection enrichments={getEnrichmentsByCategory(["blurb_generator", "series_connector", "plot_hole_detector", "story_critique", "auto_summary"])} />
+              <EnrichmentSection enrichments={getEnrichmentsByCategory(["blurb_generator", "series_connector", "plot_hole_detector"])} />
             </Suspense>
           )}
         </div>
@@ -330,14 +328,6 @@ export default function SeedDetailPage() {
             </button>
           </div>
         </div>
-      </div>
-    )}
-
-    {toast && (
-      <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium bg-red-600 text-white">
-        <span>!</span>
-        <span>{toast.message}</span>
-        <button onClick={() => setToast(null)} className="ml-2 opacity-70 hover:opacity-100">✕</button>
       </div>
     )}
     </>

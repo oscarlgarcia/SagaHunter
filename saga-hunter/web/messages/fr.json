@@ -30,6 +30,7 @@
     "title": "Détail de la Graine",
     "export": "Exporter",
     "export_tooltip": "Exporter cette graine en JSON",
+    "export_error": "Échec de l'exportation de la graine",
     "raw": "Contenu Original",
     "raw_tab": "Texte Original",
     "analysis": "Analyse",
@@ -75,7 +76,9 @@
       "kindle_pre_check": "Pré-Vérification Kindle",
       "blurb_generator": "Générateur de Résumé",
       "series_connector": "Connecteur de Séries",
-      "plot_hole_detector": "Détecteur d'Incohérences"
+      "plot_hole_detector": "Détecteur d'Incohérences",
+      "story_critique": "Critique d'Histoire",
+      "auto_summary": "Résumé Automatique"
     },
     "enrichment": {
       "plot_hole_detector": {
@@ -97,6 +100,23 @@
         "genre": "Genre :",
         "best_for": "Idéal pour :",
         "words": "{count} mots"
+      },
+      "story_critique": {
+        "coherence": "Cohérence",
+        "pacing": "Rythme",
+        "emotional_arc": "Arc Émotionnel",
+        "completeness": "Complétude",
+        "overall_grade": "Note Générale",
+        "strengths": "Forces",
+        "weaknesses": "Faiblesses",
+        "recommendations": "Recommandations",
+        "themes": "Thèmes",
+        "target_audience": "Public Cible"
+      },
+      "auto_summary": {
+        "logline": "Logline",
+        "key_themes": "Thèmes Clés",
+        "comparable": "Titres Comparables"
       },
       "voice_tuner": {
         "pov": "PDV",

@@ -1,21 +1,22 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { ok, badRequest, handleError } from "@/lib/api-utils";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const name = searchParams.get("name");
-
-  if (!name) {
-    return NextResponse.json({ error: "Agent name required" }, { status: 400 });
-  }
+  const agentName = req.nextUrl.searchParams.get("name");
+  if (!agentName) return badRequest("Missing agent name");
 
   try {
-    const { execSync } = await import("child_process");
-    const output = execSync(
-      `python3 -c "import sys; sys.path.insert(0, '/app/python'); from app.orchestrator import run_agent_once; run_agent_once('${name.replace(/'/g, "'\\''")}')"`,
-      { cwd: "/app/python", timeout: 120000, encoding: "utf-8" }
-    );
-    return NextResponse.json({ ok: true, output: output.trim() });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.stderr || err.message || "Failed to run agent" }, { status: 500 });
+    const { execFile } = await import("child_process");
+    const { promisify } = await import("util");
+    const execFileAsync = promisify(execFile);
+    const { stdout } = await execFileAsync("python3", [
+      "/app/python/run_agent.py",
+      agentName,
+    ], { timeout: 120000 });
+    logger.info("Agent run completed", { agentName });
+    return ok({ output: stdout.trim() });
+  } catch (error) {
+    return handleError(error, "agent run");
   }
 }

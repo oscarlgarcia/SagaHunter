@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { lazy, Suspense, useEffect, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import {
   GitBranch, Plus, Play, ChevronRight,
@@ -8,8 +8,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/Toast";
 import { Badge } from "@/components/ui/Badge";
-import { PipelineDAG } from "@/components/pipelines/PipelineDAG";
+
+const PipelineDAG = lazy(() => import("@/components/pipelines/PipelineDAG"));
 
 interface AgentConfig {
   agentName: string;
@@ -60,6 +62,7 @@ export default function PipelinesPage() {
   const [connections, setConnections] = useState<PipelineConnection[]>([]);
   const [agents, setAgents] = useState<AgentConfig[]>([]);
   const [logs, setLogs] = useState<AgentRunLog[]>([]);
+  const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [pipelineRunning, setPipelineRunning] = useState(false);
   const [selectedTrigger, setSelectedTrigger] = useState("news_aggregator");
@@ -70,7 +73,6 @@ export default function PipelinesPage() {
   const [editingAgent, setEditingAgent] = useState<AgentConfig | null>(null);
   const [editForm, setEditForm] = useState({ enabled: true, mode: "auto", languages: ["en"] as string[], intervalMinutes: 15, timeoutSeconds: 300, prompt: "", defaultPrompt: "", isCustom: false });
   const [savingEdit, setSavingEdit] = useState(false);
-  const [editToast, setEditToast] = useState<string | null>(null);
   const [agentLogs, setAgentLogs] = useState<Record<string, AgentRunLog[]>>({});
 
   const fetchData = async () => {
@@ -111,12 +113,6 @@ export default function PipelinesPage() {
   }, []);
 
   useEffect(() => { fetchData(); fetchAllAgentLogs(); }, []);
-
-  useEffect(() => {
-    if (!editToast) return;
-    const t = setTimeout(() => setEditToast(null), 4000);
-    return () => clearTimeout(t);
-  }, [editToast]);
 
   const agentMap = new Map(agents.map((a) => [a.agentName, a]));
 
@@ -219,11 +215,11 @@ export default function PipelinesPage() {
           body: JSON.stringify({ prompt: editForm.prompt }),
         });
       }
-      setEditToast("Agent saved");
+      addToast("Agent saved");
       setEditingAgent(null);
       fetchData();
     } catch {
-      setEditToast("Failed to save agent");
+      addToast("Failed to save agent", "error");
     } finally {
       setSavingEdit(false);
     }
@@ -353,19 +349,21 @@ export default function PipelinesPage() {
       )}
 
       <div className="mb-6">
-        <PipelineDAG
-          agents={agents}
-          connections={connections}
-          onAddConnection={addConnection}
-          onToggleConnection={toggleConnection}
-          onDeleteConnection={deleteConnection}
-          onRunAgent={runNow}
-          onToggleAgent={toggleAgent}
-          onEditAgent={editAgent}
+        <Suspense fallback={<div className="h-96 bg-gray-100 rounded-xl animate-pulse" />}>
+          <PipelineDAG
+            agents={agents}
+            connections={connections}
+            onAddConnection={addConnection}
+            onToggleConnection={toggleConnection}
+            onDeleteConnection={deleteConnection}
+            onRunAgent={runNow}
+            onToggleAgent={toggleAgent}
+            onEditAgent={editAgent}
           agentLogs={agentLogs}
           connectMode={connectMode}
           onConnectModeChange={setConnectMode}
         />
+        </Suspense>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200">
@@ -520,14 +518,6 @@ export default function PipelinesPage() {
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {editToast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium bg-green-600 text-white">
-          <span>✓</span>
-          <span>{editToast}</span>
-          <button onClick={() => setEditToast(null)} className="ml-2 opacity-70 hover:opacity-100">✕</button>
         </div>
       )}
     </div>

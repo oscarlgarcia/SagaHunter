@@ -34,8 +34,9 @@ export const agentsRouter = t.router({
   run: publicProcedure
     .input(z.object({ agentName: z.string() }))
     .mutation(async ({ input }) => {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
       const response = await fetch(
-        `http://localhost:3000/api/agents/run?name=${input.agentName}`,
+        `${baseUrl}/api/agents/run?name=${input.agentName}`,
         { method: "POST" }
       );
       return response.json();

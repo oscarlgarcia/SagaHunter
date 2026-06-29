@@ -1,9 +1,11 @@
 import logging
 import uuid
+import json
 from typing import Optional
 from app.database import execute
 from app.redis_client import publish_event
 from app.orchestrator import AGENT_REGISTRY, _run_single_agent
+from app.llm_client import llm
 
 from agents.story.type_classifier import StoryTypeClassifier
 from agents.story.synopsis_generator import SynopsisGenerator
@@ -148,3 +150,88 @@ def run_story_step(story_id: str, step_name: str) -> bool:
         logger.exception("Story step %s failed: %s", step_name, e)
         publish_event("story:progress", f"{story_id}|{step_name}|error: {e}")
         return False
+
+
+def _clean_json(text: str) -> str:
+    text = text.strip()
+    if text.startswith("```"):
+        text = text.split("\n", 1)[-1]
+    if text.endswith("```"):
+        text = text.rsplit("```", 1)[0]
+    text = text.strip()
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end != -1:
+        text = text[start : end + 1]
+    return text
+
+
+def refine_chapter(story_id: str, chapter_id: str, mode: str) -> bool:
+    row = execute(
+        """SELECT s.title, s.synopsis, s.type, s.narrative_structure,
+                  c.chapter_number, c.title, c.synopsis, c.scenes, c.content
+           FROM stories s
+           JOIN story_chapters c ON c.story_id = s.id
+           WHERE s.id = %s AND c.id = %s""",
+        (story_id, chapter_id), fetch=True,
+    )
+    if not row:
+        logger.error("Story %s or chapter %s not found", story_id, chapter_id)
+        return False
+
+    (story_title, story_synopsis, story_type, structure,
+     ch_num, ch_title, ch_synopsis, ch_scenes, ch_content) = row[0]
+
+    if mode == "synopsis":
+        prompt = (
+            "Respond with ONLY valid JSON (no markdown, no code fences). "
+            "You are a creative writer. Rewrite this chapter's synopsis to be more compelling.\n"
+            f"Story: {story_title}\n"
+            f"Story type: {story_type}\n"
+            f"Story synopsis: {story_synopsis[:500] if story_synopsis else 'N/A'}\n"
+            f"Chapter {ch_num}: {ch_title}\n"
+            f"Current synopsis: {ch_synopsis or 'N/A'}\n\n"
+            'Return JSON with key "synopsis": a 2-3 sentence chapter synopsis.'
+        )
+    elif mode == "scenes":
+        scenes_str = json.dumps(ch_scenes) if ch_scenes else "None"
+        prompt = (
+            "Respond with ONLY valid JSON (no markdown, no code fences). "
+            "You are a story outliner. Create a scene-by-scene breakdown for this chapter.\n"
+            f"Story: {story_title}\n"
+            f"Chapter {ch_num}: {ch_title}\n"
+            f"Chapter synopsis: {ch_synopsis or 'N/A'}\n"
+            f"Current scenes: {scenes_str}\n\n"
+            'Return JSON with key "scenes": an array of {"scene": int, "description": str, "characters": [str], "setting": str}. Generate 3-6 scenes.'
+        )
+    else:
+        logger.error("Unknown mode: %s", mode)
+        return False
+
+    if not llm.is_available():
+        logger.warning("LLM not available")
+        return False
+
+    try:
+        raw = llm.generate(prompt, temperature=0.3)
+        cleaned = _clean_json(raw)
+        data = json.loads(cleaned)
+    except Exception as e:
+        logger.warning("LLM refine_chapter failed: %s", e)
+        return False
+
+    if mode == "synopsis":
+        syn = data.get("synopsis")
+        if syn:
+            execute("UPDATE story_chapters SET synopsis = %s WHERE id = %s", (syn, chapter_id))
+            logger.info("Refined synopsis for chapter %s", chapter_id)
+            return True
+    elif mode == "scenes":
+        scenes = data.get("scenes")
+        if scenes and isinstance(scenes, list):
+            execute("UPDATE story_chapters SET scenes = %s::jsonb WHERE id = %s",
+                     (json.dumps(scenes), chapter_id))
+            logger.info("Generated %d scenes for chapter %s", len(scenes), chapter_id)
+            return True
+
+    return False

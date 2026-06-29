@@ -95,7 +95,8 @@ class StoryStructurer(BaseAgent):
 
     def execute(self) -> AgentResult:
         seeds = execute(
-            f"SELECT s.id, s.raw_text, s.title FROM seeds s LEFT JOIN enrichments e ON e.seed_id = s.id AND e.agent_name = '{self.name}' WHERE e.id IS NULL ORDER BY s.discovered_at DESC",
+            "SELECT s.id, s.raw_text, s.title FROM seeds s LEFT JOIN enrichments e ON e.seed_id = s.id AND e.agent_name = %s WHERE e.id IS NULL ORDER BY s.discovered_at DESC",
+            (self.name,),
             fetch=True,
         )
         enriched = 0

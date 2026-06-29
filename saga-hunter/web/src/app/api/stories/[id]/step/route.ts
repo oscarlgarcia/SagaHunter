@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
+import { ok, badRequest, notFound, handleError, safeParse } from "@/lib/api-utils";
+import { logger } from "@/lib/logger";
 
 const STEP_ORDER = [
   "story_type_classifier",
@@ -17,19 +19,16 @@ const STEP_CHECKS: Record<string, (story: any) => boolean> = {
   story_type_classifier: () => true,
   synopsis_generator: (s) => !!s.type,
   chapter_outliner: (s) => !!s.synopsis,
-  character_deepener: (s) => s.chapters?.length > 0,
-  location_builder: (s) => s.characters?.length > 0,
+  character_deepener: (s) => (s._count?.chapters ?? 0) > 0,
+  location_builder: (s) => (s._count?.characters ?? 0) > 0,
 };
 
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const body = await req.json().catch(() => ({}));
-  const parsed = StepSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-  }
+  const { data, error } = await safeParse(req, StepSchema);
+  if (error) return error;
 
   const { prisma } = await import("@/lib/prisma");
 
@@ -38,25 +37,24 @@ export async function POST(
     include: { _count: { select: { chapters: true, characters: true, locations: true } } },
   });
   if (!story) {
-    return NextResponse.json({ error: "Story not found" }, { status: 404 });
+    return notFound("Story not found");
   }
 
-  const check = STEP_CHECKS[parsed.data.step];
+  const check = STEP_CHECKS[data.step];
   if (check && !check(story)) {
-    const stepIdx = STEP_ORDER.indexOf(parsed.data.step);
+    const stepIdx = STEP_ORDER.indexOf(data.step);
     const missing = stepIdx > 0 ? STEP_ORDER[stepIdx - 1] : null;
-    return NextResponse.json(
-      { error: `Previous step not completed: ${missing}` },
-      { status: 400 }
-    );
+    return badRequest(`Previous step not completed: ${missing}`);
   }
 
   try {
-    const { execSync } = await import("child_process");
+    const { exec } = await import("child_process");
+    const { promisify } = await import("util");
+    const execAsync = promisify(exec);
     const quote = (s: string) => `'${s.replace(/'/g, "'\\''")}'`;
 
-    const output = execSync(
-      `python3 -c "import sys; sys.path.insert(0, '/app/python'); from agents.story.orchestrator import run_story_step; run_story_step(${quote(params.id)}, ${quote(parsed.data.step)})"`,
+    const { stdout } = await execAsync(
+      `python3 -c "import sys; sys.path.insert(0, '/app/python'); from agents.story.orchestrator import run_story_step; run_story_step(${quote(params.id)}, ${quote(data.step)})"`,
       { cwd: "/app/python", timeout: 120000, encoding: "utf-8" }
     );
 
@@ -70,8 +68,9 @@ export async function POST(
       },
     });
 
-    return NextResponse.json({ story: updated, output: output.trim() });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.stderr || err.message || "Failed to run step" }, { status: 500 });
+    logger.info("Story step completed", { storyId: params.id, step: data.step });
+    return ok({ story: updated, output: stdout.trim() });
+  } catch (error) {
+    return handleError(error, "story step");
   }
 }

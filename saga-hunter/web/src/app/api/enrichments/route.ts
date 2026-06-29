@@ -1,18 +1,24 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { z } from "zod";
+import { ok, badRequest, handleError } from "@/lib/api-utils";
+
+const SeedIdSchema = z.string().uuid();
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const seedId = searchParams.get("seedId");
+  try {
+    const { searchParams } = new URL(req.url);
+    const seedIdParam = searchParams.get("seedId");
+    const parsed = SeedIdSchema.safeParse(seedIdParam);
+    if (!parsed.success) return badRequest("seedId query parameter is required and must be a valid UUID");
 
-  if (!seedId) {
-    return NextResponse.json({ error: "seedId query parameter is required" }, { status: 400 });
+    const enrichments = await prisma.enrichment.findMany({
+      where: { seedId: parsed.data },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return ok(enrichments);
+  } catch (error) {
+    return handleError(error, "Failed to list enrichments");
   }
-
-  const enrichments = await prisma.enrichment.findMany({
-    where: { seedId },
-    orderBy: { createdAt: "desc" },
-  });
-
-  return NextResponse.json(enrichments);
 }

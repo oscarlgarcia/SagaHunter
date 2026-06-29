@@ -1,6 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { ok, notFound, safeParse, handleError } from "@/lib/api-utils";
+import { logger } from "@/lib/logger";
 
 const UpdateCharacterSchema = z.object({
   name: z.string().min(1).max(200).optional(),
@@ -16,38 +18,47 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string; cid: string } }
 ) {
-  const body = await req.json();
-  const parsed = UpdateCharacterSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  try {
+    const { data, error } = await safeParse(req, UpdateCharacterSchema);
+    if (error) return error;
+
+    const character = await prisma.storyCharacter.findFirst({
+      where: { id: params.cid, storyId: params.id },
+    });
+    if (!character) return notFound();
+
+    const updateData: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined) updateData[key] = value;
+    }
+
+    const updated = await prisma.storyCharacter.update({
+      where: { id: params.cid },
+      data: updateData as any,
+    });
+
+    logger.info("Character updated", { characterId: params.cid, storyId: params.id });
+    return ok(updated);
+  } catch (e) {
+    return handleError(e, "Failed to update character");
   }
-
-  const character = await prisma.storyCharacter.findFirst({
-    where: { id: params.cid, storyId: params.id },
-  });
-  if (!character) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  const data: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(parsed.data)) {
-    if (value !== undefined) data[key] = value;
-  }
-
-  const updated = await prisma.storyCharacter.update({
-    where: { id: params.cid },
-    data: data as any,
-  });
-  return NextResponse.json(updated);
 }
 
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: { id: string; cid: string } }
 ) {
-  const character = await prisma.storyCharacter.findFirst({
-    where: { id: params.cid, storyId: params.id },
-  });
-  if (!character) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  try {
+    const character = await prisma.storyCharacter.findFirst({
+      where: { id: params.cid, storyId: params.id },
+    });
+    if (!character) return notFound();
 
-  await prisma.storyCharacter.delete({ where: { id: params.cid } });
-  return NextResponse.json({ ok: true });
+    await prisma.storyCharacter.delete({ where: { id: params.cid } });
+
+    logger.info("Character deleted", { characterId: params.cid, storyId: params.id });
+    return ok({ ok: true });
+  } catch (e) {
+    return handleError(e, "Failed to delete character");
+  }
 }

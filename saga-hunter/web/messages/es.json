@@ -67,12 +67,28 @@
     "tab_publishing": "Publicación",
     "locked_step_tooltip": "Completa {step} primero",
     "no_enrichments": "No hay datos de enriquecimiento. Las historias creadas desde cero no tienen enriquecimientos de semilla.",
-    "step_order_error": "El paso anterior no está completado"
+    "step_order_error": "El paso anterior no está completado",
+    "back_to_story": "Volver a la Historia",
+    "chapter_editor": "Editor",
+    "chapter_settings": "Configuración",
+    "chapter_scenes": "Escenas",
+    "chapter_synopsis": "Sinopsis",
+    "chapter_word_target": "Objetivo de Palabras",
+    "chapter_status": "Estado",
+    "add_scene": "Añadir Escena",
+    "generate_synopsis": "Regenerar con IA",
+    "generate_scenes": "Generar Escenas con IA",
+    "prev_chapter": "Capítulo Anterior",
+    "next_chapter": "Siguiente Capítulo",
+    "save": "Guardar",
+    "saved": "Guardado",
+    "generating": "Generando..."
   },
   "seed": {
     "title": "Detalle de Semilla",
     "export": "Exportar",
     "export_tooltip": "Exportar esta semilla como JSON",
+    "export_error": "Error al exportar la semilla",
     "raw": "Contenido Original",
     "raw_tab": "Texto Original",
     "analysis": "Análisis",
@@ -123,7 +139,9 @@
       "kindle_pre_check": "Pre-Verificación Kindle",
       "blurb_generator": "Generador de Sinopsis",
       "series_connector": "Conector de Series",
-      "plot_hole_detector": "Detector de Agujeros de Trama"
+      "plot_hole_detector": "Detector de Agujeros de Trama",
+      "story_critique": "Crítica de Historia",
+      "auto_summary": "Resumen Automático"
     },
     "enrichment": {
       "plot_hole_detector": {
@@ -145,6 +163,23 @@
         "genre": "Género:",
         "best_for": "Mejor para:",
         "words": "{count} palabras"
+      },
+      "story_critique": {
+        "coherence": "Coherencia",
+        "pacing": "Ritmo",
+        "emotional_arc": "Arco Emocional",
+        "completeness": "Completitud",
+        "overall_grade": "Calificación General",
+        "strengths": "Fortalezas",
+        "weaknesses": "Debilidades",
+        "recommendations": "Recomendaciones",
+        "themes": "Temas",
+        "target_audience": "Audiencia Objetivo"
+      },
+      "auto_summary": {
+        "logline": "Logline",
+        "key_themes": "Temas Clave",
+        "comparable": "Títulos Comparables"
       },
       "voice_tuner": {
         "pov": "POV",

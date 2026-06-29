@@ -1,12 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
+import { Search } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { FeedForm } from "@/components/feeds/FeedForm";
 import { BatchFeedForm } from "@/components/feeds/BatchFeedForm";
+import { FilterBar } from "@/components/feed/FilterBar";
+import { useToast } from "@/components/ui/Toast";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface Feed {
   id: string;
@@ -33,6 +37,8 @@ interface FeedFormData {
 
 export default function FeedsPage() {
   const t = useTranslations("feeds");
+  const tc = useTranslations("common");
+  const { addToast } = useToast();
   const [feeds, setFeeds] = useState<Feed[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +46,21 @@ export default function FeedsPage() {
   const [batchModalOpen, setBatchModalOpen] = useState(false);
   const [editingFeed, setEditingFeed] = useState<Feed | null>(null);
   const [reprocessing, setReprocessing] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sourceFilter, setSourceFilter] = useState<"all" | "news" | "curiosity" | "trend">("all");
+
+  const filteredFeeds = useMemo(() => {
+    let result = feeds;
+    if (sourceFilter !== "all") {
+      result = result.filter((f) => f.sourceType === sourceFilter);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((f) => f.name.toLowerCase().includes(q) || f.url.toLowerCase().includes(q));
+    }
+    return result;
+  }, [feeds, sourceFilter, searchQuery]);
 
   const fetchFeeds = async () => {
     try {
@@ -64,7 +84,7 @@ export default function FeedsPage() {
     });
     if (!r.ok) {
       const err = await r.json();
-      alert(err.error?.fieldErrors ? Object.values(err.error.fieldErrors).flat().join(", ") : "Failed to create feed");
+      addToast(err.error?.fieldErrors ? Object.values(err.error.fieldErrors).flat().join(", ") : "Failed to create feed", "error");
       return;
     }
     setModalOpen(false);
@@ -80,7 +100,7 @@ export default function FeedsPage() {
     });
     if (!r.ok) {
       const err = await r.json();
-      alert(err.error?.fieldErrors ? Object.values(err.error.fieldErrors).flat().join(", ") : "Failed to update feed");
+      addToast(err.error?.fieldErrors ? Object.values(err.error.fieldErrors).flat().join(", ") : "Failed to update feed", "error");
       return;
     }
     setEditingFeed(null);
@@ -89,9 +109,8 @@ export default function FeedsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this feed?")) return;
     const r = await fetch(`/api/feeds/${id}`, { method: "DELETE" });
-    if (!r.ok) { alert("Failed to delete feed"); return; }
+    if (!r.ok) { addToast("Failed to delete feed", "error"); return; }
     fetchFeeds();
   };
 
@@ -109,9 +128,9 @@ export default function FeedsPage() {
     try {
       const r = await fetch("/api/feeds/reprocess", { method: "POST" });
       const data = await r.json();
-      setToast({ message: `${data.reprocessed} feeds queued for reprocessing`, type: "success" });
+      addToast(`${data.reprocessed} feeds queued for reprocessing`);
     } catch {
-      setToast({ message: "Failed to reprocess feeds", type: "error" });
+      addToast("Failed to reprocess feeds", "error");
     }
     setReprocessing(false);
   };
@@ -125,7 +144,7 @@ export default function FeedsPage() {
       });
       const data = await r.json();
       if (!r.ok) {
-        setToast({ message: data.error || "Invalid request" , type: "error" });
+        addToast(data.error || "Invalid request", "error");
         setBatchModalOpen(false);
         return;
       }
@@ -144,9 +163,9 @@ export default function FeedsPage() {
         const urls = data.errors.map((e: any) => e.url).filter(Boolean).join(", ");
         lines.push(`${data.errors.length} failed${urls ? `: ${urls}` : ""}`);
       }
-      setToast({ message: lines.join(" · ") || "No feeds processed", type: data.errors?.length > 0 || data.validationErrors?.length > 0 ? "error" : "success" });
+      addToast(lines.join(" · ") || "No feeds processed", data.errors?.length > 0 || data.validationErrors?.length > 0 ? "error" : "success");
     } catch {
-      setToast({ message: "Failed to add feeds", type: "error" });
+      addToast("Failed to add feeds", "error");
     }
     setBatchModalOpen(false);
     fetchFeeds();
@@ -180,7 +199,7 @@ export default function FeedsPage() {
           </div>
           {feeds.length > 0 && (
             <span className="text-xs font-medium text-saga-600 bg-saga-50 px-2.5 py-1 rounded-full">
-              {feeds.length} total
+              {sourceFilter !== "all" || searchQuery.trim() ? `${filteredFeeds.length}/${feeds.length}` : `${feeds.length} total`}
             </span>
           )}
         </div>
@@ -210,7 +229,26 @@ export default function FeedsPage() {
           <p className="text-sm mt-1">{t("no_feeds_hint")}</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="relative flex-1 max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={tc("search")}
+                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-saga-500 focus:border-transparent"
+              />
+            </div>
+            <FilterBar active={sourceFilter} onChange={setSourceFilter} />
+          </div>
+          {filteredFeeds.length === 0 ? (
+            <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+              <p className="text-sm text-gray-400">{tc("no_results")}</p>
+            </div>
+          ) : (
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
@@ -226,7 +264,7 @@ export default function FeedsPage() {
               </tr>
             </thead>
             <tbody>
-              {feeds.map((feed) => (
+              {filteredFeeds.map((feed) => (
                 <tr key={feed.id} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="px-5 py-4 font-medium text-gray-900">{feed.name}</td>
                   <td className="px-5 py-4 text-gray-500 max-w-[300px] truncate">{feed.url}</td>
@@ -257,7 +295,7 @@ export default function FeedsPage() {
                       >
                         {t("edit")}
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(feed.id)}>
+                      <Button variant="ghost" size="sm" onClick={() => setDeleteConfirmId(feed.id)}>
                         🗑️
                       </Button>
                     </div>
@@ -267,6 +305,8 @@ export default function FeedsPage() {
             </tbody>
           </table>
         </div>
+      )}
+        </>
       )}
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editingFeed ? t("edit") : t("add")}>
@@ -289,17 +329,13 @@ export default function FeedsPage() {
         <BatchFeedForm onSubmit={handleBatchSubmit} onCancel={() => setBatchModalOpen(false)} />
       </Modal>
 
-      {toast && (
-        <div
-          className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium transition-all ${
-            toast.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"
-          }`}
-        >
-          <span>{toast.type === "success" ? "✓" : "!"}</span>
-          <span>{toast.message}</span>
-          <button onClick={() => setToast(null)} className="ml-2 opacity-70 hover:opacity-100">✕</button>
-        </div>
-      )}
+      <ConfirmDialog
+        open={deleteConfirmId !== null}
+        title="Delete feed"
+        message="Delete this feed? This action cannot be undone."
+        onConfirm={() => { if (deleteConfirmId) handleDelete(deleteConfirmId); setDeleteConfirmId(null); }}
+        onCancel={() => setDeleteConfirmId(null)}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { ok, badRequest, safeJson, handleError } from "@/lib/api-utils";
+import { logger } from "@/lib/logger";
 
 const DEFAULT_PROMPTS: Record<string, string> = {
   angle_finder: `Respond with ONLY valid JSON (no markdown, no code fences, no explanation). Code-fence-wrapped JSON is NOT valid — respond with raw JSON only. You are a narrative analysis assistant. Analyze the following news text and extract narrative elements.
@@ -184,40 +185,52 @@ Text: {text}`,
 };
 
 export async function GET(
-  _req: NextRequest,
+  _req: Request,
   { params }: { params: { name: string } }
 ) {
-  const agent = await prisma.agentConfig.findUnique({
-    where: { agentName: params.name },
-    select: { llmPrompt: true },
-  });
+  try {
+    const agent = await prisma.agentConfig.findUnique({
+      where: { agentName: params.name },
+      select: { llmPrompt: true },
+    });
 
-  const defaultPrompt = DEFAULT_PROMPTS[params.name] || null;
-  const customPrompt = agent?.llmPrompt || null;
+    const defaultPrompt = DEFAULT_PROMPTS[params.name] || null;
+    const customPrompt = agent?.llmPrompt || null;
 
-  return NextResponse.json({
-    prompt: customPrompt || defaultPrompt,
-    isCustom: !!customPrompt,
-    defaultPrompt,
-  });
+    logger.info("Fetched agent prompt", { agentName: params.name, isCustom: !!customPrompt });
+    return ok({
+      prompt: customPrompt || defaultPrompt,
+      isCustom: !!customPrompt,
+      defaultPrompt,
+    });
+  } catch (error) {
+    return handleError(error, "agents.prompt.get");
+  }
 }
 
 export async function PUT(
-  req: NextRequest,
+  req: Request,
   { params }: { params: { name: string } }
 ) {
-  const body = await req.json();
-  const prompt = typeof body.prompt === "string" ? body.prompt.trim() : null;
+  try {
+    const { data: body, error: jsonError } = await safeJson(req);
+    if (jsonError) return jsonError;
 
-  if (prompt !== null && prompt.length === 0) {
-    return NextResponse.json({ error: "Prompt cannot be empty" }, { status: 400 });
+    const prompt = typeof body.prompt === "string" ? body.prompt.trim() : null;
+
+    if (prompt !== null && prompt.length === 0) {
+      return badRequest("Prompt cannot be empty");
+    }
+
+    const agent = await prisma.agentConfig.upsert({
+      where: { agentName: params.name },
+      update: { llmPrompt: prompt },
+      create: { agentName: params.name, llmPrompt: prompt },
+    });
+
+    logger.info("Saved agent prompt", { agentName: params.name });
+    return ok({ agentName: agent.agentName, saved: true });
+  } catch (error) {
+    return handleError(error, "agents.prompt.put");
   }
-
-  const agent = await prisma.agentConfig.upsert({
-    where: { agentName: params.name },
-    update: { llmPrompt: prompt },
-    create: { agentName: params.name, llmPrompt: prompt },
-  });
-
-  return NextResponse.json({ agentName: agent.agentName, saved: true });
 }

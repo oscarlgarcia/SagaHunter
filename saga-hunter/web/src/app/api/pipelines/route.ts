@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { ok, safeParse, handleError } from "@/lib/api-utils";
+import { logger } from "@/lib/logger";
 import { z } from "zod";
 
 const CreatePipeline = z.object({
@@ -11,18 +12,26 @@ const CreatePipeline = z.object({
 });
 
 export async function GET() {
-  const pipelines = await prisma.agentConnection.findMany({
-    orderBy: [{ triggerAgent: "asc" }, { actionAgent: "asc" }],
-  });
-  return NextResponse.json(pipelines);
+  try {
+    const pipelines = await prisma.agentConnection.findMany({
+      orderBy: [{ triggerAgent: "asc" }, { actionAgent: "asc" }],
+    });
+    logger.info("Fetched pipelines", { count: pipelines.length });
+    return ok(pipelines);
+  } catch (error) {
+    return handleError(error, "pipelines.get");
+  }
 }
 
-export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const parsed = CreatePipeline.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+export async function POST(req: Request) {
+  try {
+    const { data: parsed, error: parseError } = await safeParse(req, CreatePipeline);
+    if (parseError) return parseError;
+
+    const pipeline = await prisma.agentConnection.create({ data: parsed });
+    logger.info("Created pipeline", { id: pipeline.id, triggerAgent: parsed.triggerAgent, actionAgent: parsed.actionAgent });
+    return ok(pipeline, 201);
+  } catch (error) {
+    return handleError(error, "pipelines.post");
   }
-  const pipeline = await prisma.agentConnection.create({ data: parsed.data });
-  return NextResponse.json(pipeline, { status: 201 });
 }

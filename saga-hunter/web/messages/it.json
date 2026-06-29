@@ -30,6 +30,7 @@
     "title": "Dettaglio Seme",
     "export": "Esporta",
     "export_tooltip": "Esporta questo seme come JSON",
+    "export_error": "Errore nell'esportazione del seme",
     "raw": "Contenuto Originale",
     "raw_tab": "Testo Originale",
     "analysis": "Analisi",
@@ -75,7 +76,9 @@
       "kindle_pre_check": "Pre-Verifica Kindle",
       "blurb_generator": "Generatore di Sinossi",
       "series_connector": "Connettore di Serie",
-      "plot_hole_detector": "Rilevatore di Buchi nella Trama"
+      "plot_hole_detector": "Rilevatore di Buchi nella Trama",
+      "story_critique": "Critica della Storia",
+      "auto_summary": "Riepilogo Automatico"
     },
     "enrichment": {
       "plot_hole_detector": {
@@ -97,6 +100,23 @@
         "genre": "Genere:",
         "best_for": "Ideale per:",
         "words": "{count} parole"
+      },
+      "story_critique": {
+        "coherence": "Coerenza",
+        "pacing": "Ritmo",
+        "emotional_arc": "Arco Emotivo",
+        "completeness": "Completezza",
+        "overall_grade": "Voto Generale",
+        "strengths": "Punti di Forza",
+        "weaknesses": "Punti Deboli",
+        "recommendations": "Raccomandazioni",
+        "themes": "Temi",
+        "target_audience": "Pubblico di Riferimento"
+      },
+      "auto_summary": {
+        "logline": "Logline",
+        "key_themes": "Temi Chiave",
+        "comparable": "Titoli Comparabili"
       },
       "voice_tuner": {
         "pov": "POV",

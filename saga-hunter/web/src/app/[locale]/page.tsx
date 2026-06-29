@@ -8,135 +8,57 @@ import { FilterBar } from "@/components/feed/FilterBar";
 import { SourceIcon } from "@/components/ui/SourceIcon";
 import { AnimatedCounter } from "@/components/ui/AnimatedCounter";
 import { useEventStream } from "@/hooks/useEventStream";
+import { useToast } from "@/components/ui/Toast";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { cn, formatScore, scoreColor, statusColor } from "@/lib/utils";
+import { trpc } from "@/trpc/client";
 
 type Filter = "all" | "news" | "curiosity" | "trend";
-
-interface Stats {
-  totalSeeds: number;
-  totalEnrichments: number;
-  totalFeeds: number;
-  agentRunCount: number;
-  seedsByStatus: Record<string, number>;
-}
-
-interface Seed {
-  id: string;
-  title: string;
-  sourceType: string;
-  sourceUrl: string | null;
-  sourceName: string | null;
-  language: string;
-  narrativeScore: number | null;
-  status: string;
-  discoveredAt: string;
-}
-
-function Toast({ message, type, onDismiss }: { message: string; type: "success" | "error"; onDismiss: () => void }) {
-  useEffect(() => {
-    const t = setTimeout(onDismiss, 5000);
-    return () => clearTimeout(t);
-  }, [onDismiss]);
-
-  return (
-    <div className={cn(
-      "fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium transition-all",
-      type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"
-    )}>
-      <span>{type === "success" ? "✓" : "!"}</span>
-      <span>{message}</span>
-      <button onClick={onDismiss} className="ml-2 opacity-70 hover:opacity-100">✕</button>
-    </div>
-  );
-}
-
-function ConfirmBar({ message, onConfirm, onCancel }: { message: string; onConfirm: () => void; onCancel: () => void }) {
-  return (
-    <div className="fixed bottom-0 left-64 right-0 z-40 bg-white border-t border-gray-200 shadow-lg px-6 py-3 flex items-center justify-between">
-      <p className="text-sm text-gray-700 font-medium">{message}</p>
-      <div className="flex items-center gap-3">
-        <button onClick={onCancel} className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">Cancel</button>
-        <button onClick={onConfirm} className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">Delete</button>
-      </div>
-    </div>
-  );
-}
 
 export default function DashboardPage() {
   const t = useTranslations("home");
   const tc = useTranslations("common");
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<Filter>("all");
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [seeds, setSeeds] = useState<Seed[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<string>("score");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmAction, setConfirmAction] = useState<"delete-all" | "delete-selected" | null>(null);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
-  const [search, setSearch] = useState("");
-  const [hasMore, setHasMore] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [sortBy, setSortBy] = useState<string>("score");
   const [developing, setDeveloping] = useState(false);
+  const [displayLimit, setDisplayLimit] = useState(20);
+  const { addToast } = useToast();
   const { events } = useEventStream();
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchTimer = useRef<ReturnType<typeof setTimeout>>();
-  const lastSearch = useRef("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const refreshStats = useCallback(() => {
-    fetch("/api/stats")
-      .then((r) => r.json())
-      .then(setStats)
-      .catch(() => {});
-  }, []);
+  const refetchAll = useCallback(() => {
+    utils.seeds.list.invalidate();
+    utils.stats.dashboard.invalidate();
+  }, [utils]);
 
-  const cursorRef = useRef<string | null>(null);
+  const utils = trpc.useUtils();
 
-  const fetchSeeds = useCallback((append = false) => {
-    if (!append) setLoading(true);
-    else setLoadingMore(true);
-    const params = new URLSearchParams({ sortBy, limit: "20" });
-    if (activeFilter !== "all") params.set("sourceType", activeFilter);
-    if (lastSearch.current) params.set("search", lastSearch.current);
-    if (append && cursorRef.current) params.set("cursor", cursorRef.current);
-    fetch(`/api/seeds?${params}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (append) {
-          setSeeds((prev) => [...prev, ...(data.seeds || [])]);
-        } else {
-          setSeeds(data.seeds || []);
-        }
-        cursorRef.current = data.nextCursor;
-        setHasMore(data.hasMore);
-      })
-      .catch(() => {
-        if (!append) setSeeds([]);
-      })
-      .finally(() => {
-        setLoading(false);
-        setLoadingMore(false);
-      });
-  }, [activeFilter, sortBy]);
+  const seedQuery = trpc.seeds.list.useQuery(
+    {
+      sortBy: sortBy as "score" | "date",
+      sourceType: activeFilter !== "all" ? activeFilter : undefined,
+      search: search || undefined,
+      limit: displayLimit,
+    },
+    { placeholderData: (prev) => prev },
+  );
 
-  const handleSearchChange = (value: string) => {
-    setSearch(value);
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => {
-      lastSearch.current = value;
-      cursorRef.current = null;
-      setHasMore(false);
-      fetchSeeds();
-    }, 300);
-  };
+  const statsQuery = trpc.stats.dashboard.useQuery(undefined, { refetchInterval: 30_000 });
 
-  const loadMore = () => fetchSeeds(true);
-
-  useEffect(() => {
-    refreshStats();
-  }, [refreshStats]);
-
-  useEffect(() => { fetchSeeds(); }, [fetchSeeds]);
+  const deleteMutation = trpc.seeds.deleteMany.useMutation({
+    onSuccess: (data) => {
+      addToast(`${data.deleted} seeds deleted`);
+      setSelectedIds(new Set());
+      utils.seeds.list.invalidate();
+      utils.stats.dashboard.invalidate();
+    },
+    onError: (err) => addToast(err.message || "Delete failed", "error"),
+  });
 
   useEffect(() => {
     if (events.length === 0) return;
@@ -148,12 +70,19 @@ export default function DashboardPage() {
         latest.channel === "sagahunter:enrichment:new" ||
         latest.channel === "sagahunter:agent:run"
       ) {
-        fetchSeeds();
-        refreshStats();
+        refetchAll();
       }
     }, 2000);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [events, fetchSeeds, refreshStats]);
+  }, [events, refetchAll]);
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      seedQuery.refetch();
+    }, 300);
+  };
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -165,6 +94,7 @@ export default function DashboardPage() {
   };
 
   const selectAll = () => {
+    const seeds = seedQuery.data?.seeds || [];
     if (selectedIds.size === seeds.length) {
       setSelectedIds(new Set());
     } else {
@@ -174,42 +104,14 @@ export default function DashboardPage() {
 
   const handleDeleteAll = useCallback(async () => {
     setConfirmAction(null);
-    setToast(null);
-    const params = new URLSearchParams();
-    if (activeFilter !== "all") params.set("sourceType", activeFilter);
-    try {
-      const r = await fetch(`/api/seeds?${params}`, { method: "DELETE" });
-      const data = await r.json();
-      if (r.ok) {
-        setToast({ message: `${data.deleted} seeds deleted`, type: "success" });
-        setSelectedIds(new Set());
-        fetchSeeds();
-      } else {
-        setToast({ message: data.error || "Delete failed", type: "error" });
-      }
-    } catch {
-      setToast({ message: "Delete failed. Is the server running?", type: "error" });
-    }
-  }, [activeFilter, fetchSeeds]);
+    const seeds = seedQuery.data?.seeds || [];
+    deleteMutation.mutate({ ids: seeds.map((s) => s.id) });
+  }, [seedQuery.data, deleteMutation]);
 
   const handleDeleteSelected = useCallback(async () => {
     setConfirmAction(null);
-    setToast(null);
-    const ids = Array.from(selectedIds);
-    try {
-      const r = await fetch(`/api/seeds?ids=${ids.join(",")}`, { method: "DELETE" });
-      const data = await r.json();
-      if (r.ok) {
-        setToast({ message: `${data.deleted} seeds deleted`, type: "success" });
-        setSelectedIds(new Set());
-        fetchSeeds();
-      } else {
-        setToast({ message: data.error || "Delete failed", type: "error" });
-      }
-    } catch {
-      setToast({ message: "Delete failed. Is the server running?", type: "error" });
-    }
-  }, [selectedIds, fetchSeeds]);
+    deleteMutation.mutate({ ids: Array.from(selectedIds) });
+  }, [selectedIds, deleteMutation]);
 
   const handleDevelopSelected = useCallback(async () => {
     setDeveloping(true);
@@ -217,18 +119,22 @@ export default function DashboardPage() {
     let count = 0;
     for (const seedId of ids) {
       try {
+        const seed = seedQuery.data?.seeds.find((s) => s.id === seedId);
         const r = await fetch("/api/stories", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ seedId, title: seeds.find(s => s.id === seedId)?.title || "Untitled" }),
+          body: JSON.stringify({ seedId, title: seed?.title || "Untitled" }),
         });
         if (r.ok) count++;
-      } catch { /* skip failures */ }
+      } catch { /* skip */ }
     }
     setDeveloping(false);
     setSelectedIds(new Set());
-    setToast({ message: `Developed ${count} stories`, type: "success" });
-  }, [selectedIds, seeds]);
+    addToast(`Developed ${count} stories`);
+  }, [selectedIds, seedQuery.data, addToast]);
+
+  const seeds = seedQuery.data?.seeds || [];
+  const stats = statsQuery.data;
 
   return (
     <div>
@@ -260,7 +166,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Live feed */}
       {seeds.length > 0 && (
         <div className="mb-6 overflow-hidden">
           <div className="flex items-center gap-2 mb-2">
@@ -301,10 +206,10 @@ export default function DashboardPage() {
       </div>
 
       <div className="flex items-center justify-between mb-6">
-        <FilterBar active={activeFilter} onChange={(f) => { setActiveFilter(f); setSearch(""); lastSearch.current = ""; cursorRef.current = null; setSelectedIds(new Set()); }} />
+        <FilterBar active={activeFilter} onChange={(f) => { setActiveFilter(f); setSearch(""); setDisplayLimit(20); setSelectedIds(new Set()); }} />
         <div className="flex items-center gap-2">
           <button
-            onClick={() => { setSortBy("score"); cursorRef.current = null; }}
+            onClick={() => { setSortBy("score"); setDisplayLimit(20); }}
             className={cn(
               "px-3 py-1.5 text-xs font-medium rounded-lg transition-colors",
               sortBy === "score"
@@ -315,7 +220,7 @@ export default function DashboardPage() {
             Best Score
           </button>
           <button
-            onClick={() => { setSortBy("date"); cursorRef.current = null; }}
+            onClick={() => { setSortBy("date"); setDisplayLimit(20); }}
             className={cn(
               "px-3 py-1.5 text-xs font-medium rounded-lg transition-colors",
               sortBy === "date"
@@ -339,7 +244,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {loading ? (
+      {seedQuery.isLoading && !seedQuery.data ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="bg-white rounded-xl p-5 animate-pulse border border-gray-100">
@@ -412,14 +317,14 @@ export default function DashboardPage() {
               </Link>
             </div>
           ))}
-          {hasMore && (
+          {seedQuery.data?.hasMore && (
             <div className="flex justify-center pt-2 pb-4">
               <button
-                onClick={loadMore}
-                disabled={loadingMore}
+                onClick={() => setDisplayLimit((prev) => prev + 20)}
+                disabled={seedQuery.isFetching}
                 className="px-6 py-2.5 text-sm font-medium text-saga-600 bg-saga-50 hover:bg-saga-100 border border-saga-200 rounded-xl transition-colors disabled:opacity-50"
               >
-                {loadingMore ? (
+                {seedQuery.isFetching ? (
                   <span className="flex items-center gap-2">
                     <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
                     Loading...
@@ -448,23 +353,21 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {confirmAction === "delete-all" && (
-        <ConfirmBar
-          message={`Delete all ${activeFilter !== "all" ? activeFilter : ""} seeds (${seeds.length})? This action cannot be undone.`}
-          onConfirm={handleDeleteAll}
-          onCancel={() => setConfirmAction(null)}
-        />
-      )}
+      <ConfirmDialog
+        open={confirmAction === "delete-all"}
+        title="Delete all seeds"
+        message={`Delete all ${activeFilter !== "all" ? activeFilter : ""} seeds (${seeds.length})? This action cannot be undone.`}
+        onConfirm={handleDeleteAll}
+        onCancel={() => setConfirmAction(null)}
+      />
 
-      {confirmAction === "delete-selected" && (
-        <ConfirmBar
-          message={`Delete ${selectedIds.size} selected seeds? This action cannot be undone.`}
-          onConfirm={handleDeleteSelected}
-          onCancel={() => setConfirmAction(null)}
-        />
-      )}
-
-      {toast && <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />}
+      <ConfirmDialog
+        open={confirmAction === "delete-selected"}
+        title="Delete selected seeds"
+        message={`Delete ${selectedIds.size} selected seeds? This action cannot be undone.`}
+        onConfirm={handleDeleteSelected}
+        onCancel={() => setConfirmAction(null)}
+      />
     </div>
   );
 }

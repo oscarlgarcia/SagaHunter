@@ -12,7 +12,7 @@ class RedisSubscriber {
 
   async start() {
     if (this.sub) return;
-    const url = process.env.REDIS_URL || "redis://localhost:6379/0";
+    const url = process.env.REDIS_URL || process.env.KV_URL || "redis://localhost:6379/0";
     this.sub = new Redis(url, { enableReadyCheck: false });
     this.sub.on("ready", () => {
       console.log("[redis-subscriber] connected, subscribing to channels...");
